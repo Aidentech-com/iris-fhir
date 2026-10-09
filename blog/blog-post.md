@@ -25,6 +25,10 @@ machine that contains the whole loop, and I watched it work.
 **One computer. One browser. One real prior-auth decision — `Pending` →
 `Granted` — against a real InterSystems IRIS for Health FHIR server.**
 
+![The whole loop on one machine: order → coverage card → SMART launch → questionnaire → claim → granted, over an InterSystems IRIS for Health FHIR engine](assets/flow.svg)
+
+*The loop you are about to watch, in one picture.*
+
 ## Prior authorization is the perfect canary
 
 Prior auth is not exotic. It is the most routine, most bureaucratic
@@ -77,6 +81,21 @@ Two independent drivers verify it — an API driver (12 assertions) and a
 real-browser driver (14 assertions) — because each covers a leg the other
 cannot. Both are green. This is not a mockup of a workflow; it is the
 workflow.
+
+Here is that run, frame by frame:
+
+<table>
+  <tr>
+    <td align="center"><img src="assets/02-crd-card.png" width="430" alt="The coverage card returned at order time: Documentation Required — complete this order in DTR"/><br/><small>Step 2 — the coverage card</small></td>
+    <td align="center"><img src="assets/03-keycloak-login.png" width="430" alt="A real OIDC login page — clicking the card launches DTR as a SMART app through Keycloak"/><br/><small>Step 3 — the real OIDC login</small></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/04-dtr-questionnaire.png" width="430" alt="The payer questionnaire, rendered with live value-set answer options and pre-filled from the record"/><br/><small>Step 4 — the payer questionnaire</small></td>
+    <td align="center"><img src="assets/09-pas-decision.png" width="430" alt="The prior-auth decision in the browser: PENDING, then GRANTED"/><br/><small>Step 5 — `PENDING` → `GRANTED`</small></td>
+  </tr>
+</table>
+
+*All four frames from a single real run — synthetic patients only.*
 
 ## Why InterSystems IRIS for Health as the engine
 
@@ -174,7 +193,7 @@ things. This repo is the second one.
 Four honest reasons this lab is the right place to think about AI in
 healthcare:
 
-1. **FHIR is the substrate AI needs.** Chart summarisation, prior-auth
+1. **FHIR is the substrate AI needs.** Chart summarization, prior-auth
    copilots, RAG over patient records — every LLM feature is only as good as
    the structured, queryable data underneath. This lab hands you a running
    example of that substrate.
@@ -210,3 +229,10 @@ carries the why, the what, the install, the walkthrough, and the traps.
 The FHIR future is not coming. It is here, it runs on one machine, and its
 engine is InterSystems IRIS for Health. **You can watch it grant a claim in
 half an hour.**
+
+---
+
+*Third in a set of hands-on health-IT write-ups that share one discipline —
+take a real clinical system, build the evidence, show it working: first
+[Sarus HIS, from vendor lock-in to open intelligence], then [Teaching a
+chatbot TrakCare by cheating at its own exams], and now this.*

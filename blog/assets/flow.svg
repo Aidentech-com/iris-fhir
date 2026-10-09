@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="460" viewBox="0 0 1200 460" role="img" aria-labelledby="t1 d1">
+  <title id="t1">The DaVinci prior-authorization loop, end to end, on InterSystems IRIS for Health</title>
+  <desc id="d1">Six stages: the clinician orders, CRD returns a coverage card, a SMART app launches through OIDC login, DTR renders and pre-fills the payer questionnaire, DTR builds and submits the Claim, and PAS answers PENDING to GRANTED — all over an IRIS for Health FHIR engine.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f766e"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1200" height="460" rx="16" fill="#f0fdfa"/>
+
+  <text x="600" y="34" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="700" fill="#134e4a">The whole loop, on one machine</text>
+  <text x="600" y="58" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" fill="#0f766e">order → coverage card → SMART launch → questionnaire → claim → granted</text>
+
+  <!-- stage boxes -->
+  <g font-family="system-ui, sans-serif">
+    <!-- 1 Order -->
+    <rect x="50"  y="90" width="165" height="86" rx="10" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
+    <text x="132" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#134e4a">1 · Order</text>
+    <text x="132" y="138" text-anchor="middle" font-size="11.5" fill="#334155">clinician orders a</text>
+    <text x="132" y="154" text-anchor="middle" font-size="11.5" fill="#334155">blood-glucose monitor</text>
+
+    <!-- 2 CRD -->
+    <rect x="237" y="90" width="165" height="86" rx="10" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
+    <text x="319" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#134e4a">2 · CRD</text>
+    <text x="319" y="138" text-anchor="middle" font-size="11.5" fill="#334155">coverage card:</text>
+    <text x="319" y="154" text-anchor="middle" font-size="11.5" fill="#334155">“documentation required”</text>
+
+    <!-- 3 SMART launch -->
+    <rect x="424" y="90" width="165" height="86" rx="10" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
+    <text x="506" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#134e4a">3 · SMART launch</text>
+    <text x="506" y="138" text-anchor="middle" font-size="11.5" fill="#334155">real OIDC login</text>
+    <text x="506" y="154" text-anchor="middle" font-size="11.5" fill="#334155">(Keycloak)</text>
+
+    <!-- 4 DTR -->
+    <rect x="611" y="90" width="165" height="86" rx="10" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
+    <text x="693" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#134e4a">4 · DTR</text>
+    <text x="693" y="138" text-anchor="middle" font-size="11.5" fill="#334155">payer questionnaire</text>
+    <text x="693" y="154" text-anchor="middle" font-size="11.5" fill="#334155">pre-filled from the record</text>
+
+    <!-- 5 Claim -->
+    <rect x="798" y="90" width="165" height="86" rx="10" fill="#ffffff" stroke="#0f766e" stroke-width="2"/>
+    <text x="880" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#134e4a">5 · Claim/$submit</text>
+    <text x="880" y="138" text-anchor="middle" font-size="11.5" fill="#334155">DTR builds the</text>
+    <text x="880" y="154" text-anchor="middle" font-size="11.5" fill="#334155">Claim itself</text>
+
+    <!-- 6 PAS -->
+    <rect x="985" y="90" width="165" height="86" rx="10" fill="#ccfbf1" stroke="#0f766e" stroke-width="2"/>
+    <text x="1067" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#115e59">6 · PAS</text>
+    <text x="1067" y="138" text-anchor="middle" font-size="11.5" font-weight="700" fill="#115e59">PENDING → GRANTED</text>
+    <text x="1067" y="154" text-anchor="middle" font-size="11" fill="#0f766e">~15 seconds</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#0f766e" stroke-width="2.5" marker-end="url(#arr)">
+    <line x1="215" y1="133" x2="233" y2="133"/>
+    <line x1="402" y1="133" x2="420" y2="133"/>
+    <line x1="589" y1="133" x2="607" y2="133"/>
+    <line x1="776" y1="133" x2="794" y2="133"/>
+    <line x1="963" y1="133" x2="981" y2="133"/>
+  </g>
+
+  <!-- IRIS slab -->
+  <line x1="600" y1="176" x2="600" y2="212" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="4 4"/>
+  <rect x="60" y="212" width="1080" height="120" rx="14" fill="#0f172a"/>
+  <text x="600" y="250" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" font-weight="700" fill="#e0f2fe">InterSystems IRIS for Health — the FHIR engine under the whole loop</text>
+  <text x="600" y="280" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13.5" fill="#7dd3fc">FHIR R4 repository · OAuth confidential client · multi-model storage (objects + SQL + documents)</text>
+  <text x="600" y="302" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13.5" fill="#7dd3fc">serves the seeded clinical data the questionnaire pre-fills from; TLS-secured; ships as a verified drop-in</text>
+
+  <!-- leg labels -->
+  <g font-family="system-ui, sans-serif" font-size="11.5" fill="#0ea5e9" text-anchor="middle">
+    <line x1="506" y1="176" x2="506" y2="212" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="506" y="228" font-size="11" fill="#0284c7">serves the record</text>
+    <line x1="1067" y1="176" x2="1067" y2="212" stroke="#0ea5e9" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="1067" y="228" font-size="11" fill="#0284c7">checks &amp; records</text>
+  </g>
+
+  <text x="600" y="452" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11.5" fill="#64748b">synthetic patients only — Tables, Bobby and Quinton, Vlad — no PHI anywhere</text>
+</svg>
