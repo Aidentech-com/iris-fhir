@@ -291,7 +291,12 @@ or restarts `lxc-net`; it checks the bridge the image needs (default
 `lxcbr0` @ `10.0.3.1`, or any custom bridge via `--bridge`/`--container-ip`,
 e.g. `br0` on a 192-series), re-pins the image to a custom network before the
 first start, and walks the user through every step
-(`Press Enter to accept, or x to exit`; `--yes` for unattended). It is
+(`Press Enter to accept, or x to exit`; `--yes` for unattended). On a custom
+bridge the re-pin keeps the baked `10.0.3.108` as a **secondary** eth0
+address: IRIS's OAuth token metadata self-references
+`https://10.0.3.108:52774` and every JWT-protected FHIR read validates by
+reaching it — drop it and reads hang while `/oauth2/token` keeps answering
+(verified 2026-10-10). It is
 **self-contained**: the six-service stack, its toolchains and the built
 frontends all live inside the container at `/opt/davinci-mock`, Keycloak at
 `/opt/keycloak`. The end user runs `lxc-start`; the host runs nothing. Full

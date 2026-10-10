@@ -489,9 +489,13 @@ only imports when the realm is absent, so the realm must re-import from the
 re-pinned fixture to carry **your** redirect URIs, and points the
 TLS-verifying in-container IRIS clients (ehr-shim, the seeder) at `127.0.0.1`
 instead of the new IP — the shipped IRIS TLS certificate only covers
-`127.0.0.1` and the baked `10.0.3.108`. Runtime state (logs, IRIS
-data) is never touched. Everything below then uses **your** address
-(`http://192.168.50.108:3001/`).
+`127.0.0.1` and the baked `10.0.3.108`. The netplan keeps the baked
+`10.0.3.108` bound as a **secondary address** on eth0 alongside your
+`--container-ip`: IRIS's OAuth server issues tokens that self-reference
+`https://10.0.3.108:52774`, and every token-bearing FHIR request validates by
+reaching that URL — drop it and JWT-protected reads hang while `/oauth2/token`
+keeps answering. Runtime state (logs, IRIS data) is never touched. Everything
+below then uses **your** address (`http://192.168.50.108:3001/`).
 
 The container then brings the stack up on its own — see
 [Run and verify](#run-and-verify).

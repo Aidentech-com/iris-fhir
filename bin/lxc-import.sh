@@ -331,18 +331,30 @@ repin_file_loopback() { # $1 path
 }
 if [ "$REPIN" = 1 ]; then
   begin_step "Re-pin network (custom bridge/IP)" \
-    "The image bakes in $DEFAULT_BRIDGE / $DEFAULT_IP. Rewriting the container config, netplan, the installed systemd unit, and the stack's endpoint references so everything keys on $CONTAINER_IP on $BRIDGE. Runtime state (logs, IRIS data) is left untouched; the shipped Keycloak DB is dropped so the realm re-imports with your redirect URIs, and the TLS-verifying IRIS clients are pointed at loopback because the shipped IRIS certificate only covers 127.0.0.1 and the baked 10.0.3.108."
+    "The image bakes in $DEFAULT_BRIDGE / $DEFAULT_IP. Rewriting the container config, netplan, the installed systemd unit, and the stack's endpoint references so everything keys on $CONTAINER_IP on $BRIDGE, while keeping the baked $DEFAULT_IP as a secondary address. Runtime state (logs, IRIS data) is left untouched; the shipped Keycloak DB is dropped so the realm re-imports with your redirect URIs, and the TLS-verifying IRIS clients are pointed at loopback because the shipped IRIS certificate only covers 127.0.0.1 and the baked 10.0.3.108."
   handle="$DEST/rootfs"
   sed -i "s/^lxc\.net\.0\.link = .*/lxc.net.0.link = $BRIDGE/" "$DEST/config"
   ok "  config: lxc.net.0.link -> $BRIDGE"
+  # The baked IP must stay bound: IRIS's FHIR OAuth server issues tokens whose
+  # OAuth self-reference is https://10.0.3.108:52774, and every token-bearing
+  # FHIR request validates by reaching that URL. A custom netplan that drops
+  # 10.0.3.108 makes those self-calls blackhole out the default gateway instead
+  # (every JWT-protected read hangs while /oauth2/token keeps answering).
+  # Keep $DEFAULT_IP as a SECONDARY address on eth0 so the self-reference
+  # resolves locally. Verified 2026-10-10 custom-path cert: netplan with
+  # $CONTAINER_IP primary + 10.0.3.108 secondary, loopback-keyed clients,
+  # seed-iris 9/9, demo.sh 12/12, e2e 14/14.
   cat > "$handle/etc/netplan/10-lxc.yaml" <<EOF
-# Static IP for the host's $BRIDGE bridge. The whole davinci-mock stack keys
-# on $CONTAINER_IP:52774. Re-pinned by bin/lxc-import.sh for a custom bridge/IP.
+# Primary: $CONTAINER_IP on the host's $BRIDGE — the URL everything in the
+# stack advertises. Secondary: the image's baked $DEFAULT_IP, kept because
+# IRIS's own OAuth metadata self-references it and must stay routable.
+# Re-pinned by bin/lxc-import.sh for a custom bridge/IP.
 network:
   ethernets:
     eth0:
       addresses:
         - $CONTAINER_IP$PREFIX
+        - $DEFAULT_IP$PREFIX
       routes:
         - to: default
           via: $GATEWAY
@@ -353,7 +365,7 @@ network:
           - 8.8.8.8
   version: 2
 EOF
-  ok "  netplan -> $CONTAINER_IP$PREFIX via $GATEWAY"
+  ok "  netplan -> $CONTAINER_IP$PREFIX (primary) + $DEFAULT_IP$PREFIX (secondary) via $GATEWAY"
   repin_file_loopback "$handle/opt/davinci-mock/bin/env.sh"
   repin_file_loopback "$handle/opt/davinci-mock/bin/seed-iris.sh"
   repin_file_loopback "$handle/opt/davinci-mock/bin/ehr-shim/server.js"
@@ -372,7 +384,8 @@ EOF
   rm -f "$handle/opt/keycloak/data/h2/keycloakdb.mv.db" \
         "$handle/opt/keycloak/data/h2/keycloakdb.trace.db"
   ok "shipped Keycloak DB dropped (realm re-imports with $CONTAINER_IP redirect URIs)"
-  if grep -rn '10\.0\.3\.108' "$DEST/config" "$handle/etc/netplan/10-lxc.yaml" \
+  # netplan intentionally carries $DEFAULT_IP (secondary address) — not listed.
+  if grep -rn '10\.0\.3\.108' "$DEST/config" \
       "$handle/opt/davinci-mock/bin/env.sh" "$handle/opt/davinci-mock/bin/seed-iris.sh" \
       "$handle/opt/davinci-mock/bin/ehr-shim/server.js" \
       "$handle/usr/local/bin/davinci-stack" \
