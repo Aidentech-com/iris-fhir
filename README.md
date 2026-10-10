@@ -436,13 +436,15 @@ addresses, dnsmasq leases, live probe) — **before** it downloads anything.
 ```bash
 git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
-sudo bash bin/lxc-import.sh               # default: single file from Cloudflare R2
+sudo bash bin/lxc-import.sh               # default: single file from https://download.aidentech.com
 ```
 
 That downloads the **one** ~4.2 GB image file (`iris-fhir-image.tar.gz` from
-the R2 mirror), **verifies the whole-archive SHA-256**, extracts to
-`/var/lib/lxc/iris-fhir`, starts the container, and waits for IRIS and the
-six-service stack to answer. Expect 5–15 min, dominated by the download.
+`https://download.aidentech.com`), **verifies the whole-archive SHA-256**
+(the sidecar ships with the GitHub release; when the download link serves none,
+the step says so and skips), extracts to `/var/lib/lxc/iris-fhir`, starts the
+container, and waits for IRIS and the six-service stack to answer. Expect
+5–15 min, dominated by the download.
 
 **Every step announces itself** — a one-line brief, then
 `Press Enter to accept, or x to exit` — so you always know what is about to
@@ -467,7 +469,8 @@ The full transcript is written to `$HOME/lxc-import-iris-fhir.log`.
 
 - `sudo bash bin/lxc-import.sh github` — the GitHub
   [`dropin-v2`](https://github.com/Aidentech-com/iris-fhir/releases/tag/dropin-v2)
-  release (three parts + sidecars; the general fallback when R2 is blocked).
+  release (three parts + sidecars; the general fallback, and the source that
+  ships the `.sha256` sidecar for a verified pull).
 - `sudo bash bin/lxc-import.sh ./downloads` — a directory holding the parts
   (or the single file), for downloading by hand.
 

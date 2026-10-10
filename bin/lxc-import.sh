@@ -13,7 +13,7 @@
 # exit the whole process (x). Download progress is shown live.
 #
 #   Usage:
-#     sudo bash bin/lxc-import.sh                          # R2 single file (default)
+#     sudo bash bin/lxc-import.sh                          # single file from download.aidentech.com (default)
 #     sudo bash bin/lxc-import.sh github                   # GitHub release parts
 #     sudo bash bin/lxc-import.sh ./downloads              # dir with parts (+ .sha256)
 #     sudo bash bin/lxc-import.sh iris-fhir-image.tar.gz   # single local file
@@ -32,7 +32,7 @@ ARCHIVE_NAME="$NAME-image.tar.gz"
 DEFAULT_BRIDGE="lxcbr0"
 DEFAULT_BRIDGE_IP="10.0.3.1"
 DEFAULT_IP="10.0.3.108"
-R2_BASE="https://pub-4305339964f246cfa77bd041fc2a957b.r2.dev"
+DOWNLOAD_BASE="https://download.aidentech.com"
 # GitHub's /releases/latest is an HTML page (it redirects to /releases/tag/<t>);
 # json.load on it fails. Use the REST API, which returns the asset list as JSON.
 RELEASE_API="https://api.github.com/repos/Aidentech-com/iris-fhir/releases/latest"
@@ -43,7 +43,7 @@ usage() {
   cat <<EOF
 Usage: sudo bash $0 [OPTIONS] [SOURCE]
 
-SOURCE   (default) r2      single-file mirror on Cloudflare R2 (~4.2 GB)
+SOURCE   (default) download   single file from https://download.aidentech.com (~4.2 GB)
          github            GitHub release parts (3 x ~1.9 GB)
          ./dir | file.tar.gz | part-files | URLs   existing local sources
 
@@ -56,7 +56,7 @@ EOF
 }
 
 # --- options ------------------------------------------------------------
-BRIDGE_OPT="" IP_OPT="" YES=0 SRC_ARG="r2" LOG="${LOG:-$HOME/lxc-import-iris-fhir.log}"
+BRIDGE_OPT="" IP_OPT="" YES=0 SRC_ARG="download" LOG="${LOG:-$HOME/lxc-import-iris-fhir.log}"
 positional=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -214,14 +214,15 @@ ok "network resolved"
 
 # ---------------------------------------------------------------- [3/10]
 begin_step "Image source" \
-  "Downloads the ~4.2 GB image. Default is the single file from R2 ($R2_BASE); 'github' downloads the three release parts instead."
+  "Downloads the ~4.2 GB image. Default is the single file from https://download.aidentech.com; 'github' downloads the three release parts instead."
 SRC="$SRC_ARG"
 ARCHIVE="$STAGE/$ARCHIVE_NAME"
 case "$SRC" in
-  r2)
-    info "fetching $R2_BASE/$ARCHIVE_NAME (single file, ~4.2 GB)"
-    curl -fL --progress-bar -o "$ARCHIVE" "$R2_BASE/$ARCHIVE_NAME"
-    curl -fL -o "$STAGE/$ARCHIVE_NAME.sha256" "$R2_BASE/$ARCHIVE_NAME.sha256"
+  download)
+    info "fetching $DOWNLOAD_BASE/$ARCHIVE_NAME (single file, ~4.2 GB)"
+    curl -fL --progress-bar -o "$ARCHIVE" "$DOWNLOAD_BASE/$ARCHIVE_NAME"
+    curl -fL -o "$STAGE/$ARCHIVE_NAME.sha256" "$DOWNLOAD_BASE/$ARCHIVE_NAME.sha256" \
+      || warn "no .sha256 sidecar at the download link — checksum step will be skipped"
     ;;
   github)
     info "fetching release metadata from $RELEASE_API ..."
@@ -278,7 +279,7 @@ if [ -f "$STAGE/$ARCHIVE_NAME.sha256" ]; then
   ( cd "$STAGE" && sha256sum -c "$ARCHIVE_NAME.sha256" ) || die "checksum mismatch on the downloaded image — re-run, or download from the GitHub release"
   ok "archive checksum OK"
 else
-  warn "no .sha256 sidecar available (raw-URL mode) — checksum skipped"
+  warn "no .sha256 sidecar available — checksum skipped (the GitHub release ships sidecars; use 'github' for a verified pull)"
 fi
 
 # ---------------------------------------------------------------- [5/10]

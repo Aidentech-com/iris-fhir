@@ -47,7 +47,7 @@ Everything the stack authenticates against, in full. There is nothing else.
 | Keycloak demo user | `dtr` / `dtr-demo` | `fixtures/keycloak/BurdenReduction-realm.json` | none — `e2e-browser.py` types it |
 | Keycloak client secret | `#replaceMe#` | same fixture; a literal upstream placeholder | none |
 | PAS FHIR client | none | PAS runs `BYPASS_AUTH=true`, issues its own token from H2 | none |
-| GitHub | none | origin = `Aidentech-com/davinci-mock` (unchanged, unpushed). Active repo: **`Aidentech-com/iris-fhir`** (public) — remote `iris-fhir`, created + pushed 2026-09-30 as the project's home under the LXC machine's name; flipped public 2026-09-30 (later) to serve the distributable LXC image release to end users (`bin/lxc-import.sh github`; single-file mirror on R2 is the default source). Image parts live as release assets on this repo | none |
+| GitHub | none | origin = `Aidentech-com/davinci-mock` (unchanged, unpushed). Active repo: **`Aidentech-com/iris-fhir`** (public) — remote `iris-fhir`, created + pushed 2026-09-30 as the project's home under the LXC machine's name; flipped public 2026-09-30 (later) to serve the distributable LXC image release to end users (`bin/lxc-import.sh download` by default — single file from https://download.aidentech.com; `bin/lxc-import.sh github` for the release parts). Image parts live as release assets on this repo | none |
 | `VSAC_API_KEY` | absent | optional; without it 67 value sets do not resolve | none — omit it |
 | IRIS FHIR OAuth confidential client | auto-generated id/secret in `bin/env.sh` (`IRIS_OAUTH_CLIENT_ID`/`_SECRET`) | created by `ConfigureInternalOAuthClients()` when the `iris-fhir` container was provisioned; local mock fixture, same standing as Keycloak's `admin/admin` — it only authorizes against the container's internal OAuth server | none — needed by `bin/ehr-shim` and `bin/seed-iris.sh` |
 
@@ -283,9 +283,10 @@ State these if asked; do not try to fix them.
 ## LXC drop-in image (maintenance notes)
 
 The `iris-fhir` LXC container ships as a distributable image (release assets on
-`Aidentech-com/iris-fhir`, plus a single-file mirror on Cloudflare R2;
-`bin/lxc-import.sh` on the end-user host — R2 single file by default,
-`bin/lxc-import.sh github` for the release parts). The installer never starts
+`Aidentech-com/iris-fhir`; end-user default source is the single file at
+`https://download.aidentech.com/iris-fhir-image.tar.gz`, with
+`bin/lxc-import.sh github` as the sidecar-carrying alternate). The installer
+never starts
 or restarts `lxc-net`; it checks the bridge the image needs (default
 `lxcbr0` @ `10.0.3.1`, or any custom bridge via `--bridge`/`--container-ip`,
 e.g. `br0` on a 192-series), re-pins the image to a custom network before the
@@ -296,15 +297,14 @@ frontends all live inside the container at `/opt/davinci-mock`, Keycloak at
 `/opt/keycloak`. The end user runs `lxc-start`; the host runs nothing. Full
 end-user walkthrough: `LXC-DROPIN.md`.
 
-R2 mirror (publish side): bucket `iris-fhir-downloads`, public access enabled at
-`https://pub-4305339964f246cfa77bd041fc2a957b.r2.dev` (keys
-`iris-fhir-image.tar.gz` + `.sha256`; the archive is byte-identical to the
-`dropin-v2` release parts). Publish with the **AWS CLI** against the S3 endpoint
-`https://ac5a6c8fb78d7e0c9ee23e673a80f47d.r2.cloudflarestorage.com` (R2 API
-token from the dashboard) — `wrangler r2 object put` defaults to **local
-emulation mode** (adds `--remote` but never helps: the `--file` cap is 300 MiB
-anyway, and its local state dir, `.wrangler/` under the CWD, has already filled
-`/mnt/c` once — never run it from there).
+Distribution: the single file is served to end users at
+`https://download.aidentech.com/iris-fhir-image.tar.gz` (~4.2 GB, live-verified
+2026-10-10). The download link serves **no** `.sha256` sidecar, so the
+installer warns and skips the checksum on that path — the GitHub `dropin-v2`
+release keeps the sidecars for a verified pull. R2 was tried and explicitly
+abandoned (`wrangler r2 object put` defaults to local emulation and its
+`--file` cap is 300 MiB; the account-visible bucket tied to
+`download.aidentech.com` is owner-managed — do not touch it).
 
 Boot sequence inside the container (no host systemd involvement):
 
