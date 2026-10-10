@@ -322,7 +322,7 @@ repin_file() { # $1 path
 }
 if [ "$REPIN" = 1 ]; then
   begin_step "Re-pin network (custom bridge/IP)" \
-    "The image bakes in $DEFAULT_BRIDGE / $DEFAULT_IP. Rewriting the container config, netplan, and the stack's endpoint references so everything keys on $CONTAINER_IP on $BRIDGE. Runtime state (logs, db files) is left untouched."
+    "The image bakes in $DEFAULT_BRIDGE / $DEFAULT_IP. Rewriting the container config, netplan, the installed systemd unit, and the stack's endpoint references so everything keys on $CONTAINER_IP on $BRIDGE. Runtime state (logs, IRIS data) is left untouched; the shipped Keycloak DB is dropped so the realm re-imports with your redirect URIs."
   handle="$DEST/rootfs"
   sed -i "s/^lxc\.net\.0\.link = .*/lxc.net.0.link = $BRIDGE/" "$DEST/config"
   ok "  config: lxc.net.0.link -> $BRIDGE"
@@ -353,14 +353,27 @@ EOF
   repin_file "$handle/opt/davinci-mock/bin/davinci-stack-container.sh"
   repin_file "$handle/usr/local/bin/davinci-stack"
   repin_file "$handle/opt/davinci-mock/fixtures/lxc/davinci-stack.service"
+  # The installed unit is a separate copy of the fixture: systemd reads THIS one.
+  repin_file "$handle/etc/systemd/system/davinci-stack.service"
   repin_file "$handle/opt/davinci-mock/fixtures/keycloak/BurdenReduction-realm.json"
+  repin_file "$handle/opt/davinci-mock/fixtures/order-sign-warmup.json"
+  # kc.sh --import-realm only imports when the realm is absent, and the image ships
+  # the realm pre-imported (H2 DB) — so the re-pinned fixture alone would never take
+  # effect. Drop the shipped DB; first boot re-imports from the re-pinned fixture.
+  rm -f "$handle/opt/keycloak/data/h2/keycloakdb.mv.db" \
+        "$handle/opt/keycloak/data/h2/keycloakdb.trace.db"
+  ok "shipped Keycloak DB dropped (realm re-imports with $CONTAINER_IP redirect URIs)"
   if grep -rn '10\.0\.3\.108' "$DEST/config" "$handle/etc/netplan/10-lxc.yaml" \
       "$handle/opt/davinci-mock/bin/env.sh" "$handle/opt/davinci-mock/bin/seed-iris.sh" \
       "$handle/opt/davinci-mock/bin/ehr-shim/server.js" \
       "$handle/usr/local/bin/davinci-stack" \
-      "$handle/opt/davinci-mock/fixtures/keycloak/BurdenReduction-realm.json" 2>/dev/null; then
+      "$handle/etc/systemd/system/davinci-stack.service" \
+      "$handle/opt/davinci-mock/fixtures/keycloak/BurdenReduction-realm.json" \
+      "$handle/opt/davinci-mock/fixtures/order-sign-warmup.json" 2>/dev/null; then
     warn "10.0.3.108 still appears in a re-pinned file (listed above) — review before starting"
   fi
+  [ -f "$handle/opt/keycloak/data/h2/keycloakdb.mv.db" ] \
+    && warn "shipped Keycloak DB still present — realm keeps its baked redirect URIs"
   ok "re-pinned to $CONTAINER_IP on $BRIDGE"
 else
   info "image default network (lxcbr0 / $DEFAULT_IP) — no re-pin needed"

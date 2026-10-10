@@ -481,10 +481,13 @@ sudo bash bin/lxc-import.sh --bridge br0 --container-ip 192.168.50.108
 ```
 
 The installer rewrites the container config (`lxc.net.0.link`), the in-image
-netplan, and every stack endpoint that keys on the baked-in `10.0.3.108`
-(`env.sh` FHIR base, ehr-shim, `davinci-stack*`, the Keycloak realm redirect
-URIs) before the first start — runtime state (logs, databases) is never
-touched. Everything below then uses **your** address
+netplan, the installed systemd unit, and every stack endpoint that keys on
+the baked-in `10.0.3.108` (`env.sh` FHIR base, ehr-shim, `davinci-stack*`,
+the Keycloak realm redirect URIs, the CRD warmup fixture) before the first
+start. It also drops the shipped Keycloak database — `kc.sh --import-realm`
+only imports when the realm is absent, so the realm must re-import from the
+re-pinned fixture to carry **your** redirect URIs. Runtime state (logs, IRIS
+data) is never touched. Everything below then uses **your** address
 (`http://192.168.50.108:3001/`).
 
 The container then brings the stack up on its own — see
