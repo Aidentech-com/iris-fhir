@@ -17,7 +17,7 @@
 # -----------------------------------------------------------------------
 # WHAT USED TO BE HERE
 #
-# One entry: the repository owner's own work address, sardar@aiden[t]ech.com.
+# One entry: the repository owner's own work address (value withheld here).
 #
 # It was found during the pre-publication scrub and offered for removal. The
 # owner chose to keep it, on the grounds that correct attribution of their own

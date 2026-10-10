@@ -7,7 +7,7 @@
 # Layout (all inside this folder, nothing in /tmp — /tmp does not survive here):
 #   runtime/jdk17          Temurin JDK 17.0.20.1     (CRD + PAS + test-ehr)
 #   runtime/maven          Apache Maven 3.9.9        (test-ehr ships no mvnw)
-#   repos/<svc>            upstream checkouts at the SHAs pinned in PLAN.md §2
+#   repos/<svc>            upstream checkouts at the SHAs pinned in versions.lock
 #   logs/ pids/ state/     per-service log, PID file and runtime state
 
 # ${BASH_SOURCE[0]:-$0} rather than ${BASH_SOURCE[0]} alone: this file gets
@@ -32,7 +32,7 @@ export GRADLE_USER_HOME="${GRADLE_USER_HOME:-/root/.cache/davinci-mock/gradle}"
 export MAVEN_OPTS="${MAVEN_OPTS:--Xmx512m}"
 mkdir -p "$GRADLE_USER_HOME"
 
-# --- authoritative ports (from prior-auth/docker-compose.yml, see PLAN.md §2) ---
+# --- authoritative ports (from prior-auth/docker-compose.yml) ---
 export TEST_EHR_PORT=8080     # ehr-shim -> IRIS (replaces test-ehr on this port)
 export CRD_PORT=8090          # crd
 export DTR_PORT=3005          # dtr
@@ -99,7 +99,7 @@ export ADVERTISE_HOST="${ADVERTISE_HOST:-localhost}"
 # How long up.sh waits for a predecessor's port to clear before giving up.
 export PORT_WAIT="${PORT_WAIT:-30}"
 
-# --- per-JVM heap caps (PLAN.md §2; box has ~5-6 GB available of 7 GB) ---
+# --- per-JVM heap caps (box has ~5-6 GB available of 7 GB) ---
 export EHR_XMX=512m
 export CRD_XMX=640m
 export PAS_XMX=768m
@@ -149,7 +149,7 @@ export CORS_ORIGINS
 export DELAY=15000
 
 # DTR. Both defaults upstream already point at our EHR, stated here so the
-# swap point is visible in one place (PLAN.md §7). The EHR base is /fhir/r4 —
+# swap point is visible in one place. The EHR base is /fhir/r4 —
 # the IRIS instance fronted by bin/ehr-shim on $TEST_EHR_PORT.
 export REACT_APP_SERVER_PORT="$DTR_PORT"
 export REACT_APP_INITIAL_CLIENT="http://$ADVERTISE_HOST:$TEST_EHR_PORT/fhir/r4::app-login"

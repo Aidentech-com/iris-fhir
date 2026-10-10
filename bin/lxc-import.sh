@@ -2,7 +2,7 @@
 # Drop the iris-fhir LXC image in and start it. END-USER side.
 # Downloads (if needed), verifies the whole-archive checksum, extracts under
 # /var/lib/lxc and lxc-start -- then hands off to the stack setup in
-# LXC-DROPIN.md.
+# README (Path A2).
 #
 #   Usage:  sudo bash bin/lxc-import.sh github
 #           sudo bash bin/lxc-import.sh ./downloads          # dir with the .partNN files (+ .sha256)
@@ -131,4 +131,4 @@ echo "  lxc-attach -n $NAME -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh
 echo "  # browser driver, from the host. Playwright must be in a venv; the full"
 echo "  # recipe (PEP-668 on Ubuntu 24.04) is in README 'Run and verify':"
 echo "  ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py             # 14/14"
-echo "Full runbook: LXC-DROPIN.md"
+echo "Full runbook: README.md"

@@ -13,7 +13,7 @@
 # The container MUST already be in the blessed state (seeded, OAuth client
 # provisioned, TLS cert installed) AND on a STATIC IP in its netplan config;
 # the script refuses to package a DHCP-configured container, because the whole
-# stack keys on https://10.0.3.108:52774 (see LXC-DROPIN.md).
+# stack keys on https://10.0.3.108:52774 (see README, Path A2).
 set -euo pipefail
 
 NAME="${1:-iris-fhir}"
@@ -29,7 +29,7 @@ command -v lxc-stop >/dev/null || { echo "error: lxc-utils not installed" >&2; e
 
 # Guard: the container must be on a static IP, not DHCP.
 if grep -q 'dhcp4' "$R/etc/netplan/10-lxc.yaml" 2>/dev/null; then
-  echo "error: container still uses DHCP. Pin a static IP first (see LXC-DROPIN.md)." >&2
+  echo "error: container still uses DHCP. Pin a static IP first (see README, Path A2)." >&2
   exit 1
 fi
 

@@ -16,8 +16,7 @@ Also out of scope, and not this repository's to fix:
 
 - anything in the six upstream HL7 DaVinci projects. If you find a vulnerability there, report
   it to that project. Where a credential is hardcoded in an upstream project, this repository
-  deliberately redacts the value and documents only the *finding* — see
-  `investigation-log.md`.
+  deliberately redacts the value and documents only the *finding*.
 - the published demo credentials themselves, as reused *elsewhere*. If you have found the same
   password in a different, real system, that is a report about that system, not this one.
 

@@ -1,6 +1,6 @@
 # versions.lock — everything the stack is built from
 #
-# The single source of truth for the run version. SOURCES.md and PLAN.md describe
+# The single source of truth for the run version. SOURCES.md and README.md describe
 # *how* these were chosen; this file is what bin/provision.sh actually reads, so
 # the pins cannot drift away from the prose.
 #
@@ -11,7 +11,8 @@
 #
 # Why this file exists at all: the six SHAs used to live only in markdown tables,
 # and nothing in bin/ ever called bin/clone.sh. A fresh clone of this repo was
-# therefore documentation, not a rebuild. See GIT-PLAN.md §0.1.
+# therefore documentation, not a rebuild. See README, "Pinned versions and pin
+# discipline".
 #
 # Do not hand-edit a SHA to "catch up with upstream". Changing a line here is a
 # change to the run version: re-run both drivers, then make a new annotated tag.

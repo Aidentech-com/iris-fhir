@@ -41,7 +41,7 @@ free -h | head -2
 
 ## Already tried
 
-<!-- If you read TEST-FLOW.md, say which part. It usually has the answer. -->
+<!-- If you read the accompanying runbook notes, say which part. They usually have the answer. -->
 
 ## Anything that would help reproduce
 

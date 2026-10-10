@@ -6,7 +6,7 @@
 #
 # Deliberately five independent process groups, not one supervisor process: a
 # crash in one must not kill-loop the rest, and each needs its own readiness
-# signal (PLAN.md §2).
+# signal.
 set -uo pipefail
 source "$(dirname "$0")/env.sh"
 
@@ -161,7 +161,7 @@ fi
 # for the Maven/Gradle services, and kc.sh runs "$JAVA_HOME/bin/java", so without
 # this it would start on 17 and refuse.
 if [ ! -x "$KEYCLOAK_HOME/bin/kc.sh" ]; then
-  die "keycloak not found at $KEYCLOAK_HOME (see TEST-FLOW.md §12 for install)"
+  die "keycloak not found at $KEYCLOAK_HOME (see README Path A; the drop-in image ships Keycloak inside the container)"
 fi
 KC_JAVA_HOME="${KEYCLOAK_JAVA_HOME:-/usr/lib/jvm/java-21-openjdk-amd64}"
 [ -x "$KC_JAVA_HOME/bin/java" ] || die "need a JDK 21 for keycloak; $KC_JAVA_HOME has no bin/java"

@@ -105,11 +105,11 @@ PY
 CASES=$(cat <<'EOF'
 06-No-secrets|README.md|Here is my key: ghp_@@ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789
 06-No-secrets|README.md|aws key AKIA@@IOSFODNN7EXAMPLE here
-07-No-host|README.md|The runner was at 172@@.22.71.96 when this happened.
-07-No-host|README.md|Scratch space lives at /tmp/@@opencode/run-1
-08-No-upstream|investigation-log.md|ADMIN_@@TOKEN = "Y3YW@@q2l08kvFqy50fQJY"
+07-No-host|README.md|The runner was at 10@@.9.9.9 when this happened.
+07-No-host|README.md|Scratch space lives at /tmp/@@sandbox-01/run-1
+08-No-upstream|README.md|ADMIN_@@TOKEN = "Y3YW@@q2l08kvFqy50fQJY"
 08-No-upstream|SOURCES.md|Upstream ships ADMIN_@@TOKEN = "s3cr3t-@@upstream-value"
-08-No-upstream|investigation-log.md|The value is Y3YW@@q2l08kvFqy50fQJY, unlabelled
+08-No-upstream|README.md|The value is Y3YW@@q2l08kvFqy50fQJY, unlabelled
 11-Documentation|README.md|```\nunterminated fence
 12-Documentation|README.md|The repository is **@@private**", so git clone needs credentials
 12-Documentation|README.md|The repo is **@@private**" and should stay that way while the stack exists.
@@ -157,6 +157,11 @@ kept = [l for l in path.read_text().splitlines(keepends=True) if needle not in l
 path.write_text("".join(kept))
 ' "$f" "${text:2}"
   else
+    # A file that does not end in a newline would glue the planted text onto its
+    # last line. The fence-balance guard counts on the plant becoming its own
+    # line, and glued text also changes what a would-be commit looks like, so
+    # separate the plant the same way an editor would.
+    [ -z "$(tail -c 1 "$f")" ] || printf '\n' >> "$f"
     printf '%b\n' "${text//@@/}" >> "$f"
   fi
 }

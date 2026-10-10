@@ -6,7 +6,7 @@
 #
 # --purge exists because PAS and DTR keep state on disk between runs. Without
 # it a half-finished demo leaves Claims and client registrations behind, and the
-# next run inherits them (PLAN.md §6 Phase 4).
+# next run inherits them.
 set -uo pipefail
 source "$(dirname "$0")/env.sh"
 

@@ -33,10 +33,23 @@ dist/
 __pycache__/
 *.pyc
 
-# The Playwright virtualenv that README / LXC-DROPIN tell you to create for
+# The Playwright virtualenv that README tells you to create for
 # bin/e2e-browser.py (Ubuntu 24.04 is PEP-668 "externally managed", so Playwright
 # cannot be pip-installed into the system interpreter).
 .venv/
 
 # CI harness (executed by bin/ci-local.sh)
 .ci-local/
+
+# Working docs kept locally but deliberately not published with the repo.
+# They are the author's private runbook and planning notes, not part of the
+# public deliverable; the local copies stay, but they must never be staged.
+/CONTRIBUTING.md
+/GIT-PLAN.md
+/IRIS-LXC-PLAN.md
+/LXC-DROPIN.md
+/PLAN.md
+/SESSION-NOTES.md
+/TEST-FLOW.md
+/investigation-log.md
+/blog/

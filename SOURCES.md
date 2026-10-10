@@ -1,6 +1,6 @@
 # Sources
 
-Every claim in `PLAN.md` traces to one of these. Access date: **2026-09-26**.
+Every claim in this documentation traces to one of these. Access date: **2026-09-26**.
 
 ---
 

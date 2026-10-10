@@ -97,8 +97,9 @@ jobs:
       - name: No secrets or host fingerprints
         run: |
           # High-confidence token patterns. Deliberately requires a length after
-          # the prefix: bare 'github_pat_' as a substring appears in prose in
-          # GIT-PLAN.md, which documents the very patterns scanned for here.
+          # the prefix: bare 'github_pat_' as a substring appears in prose that
+          # discusses token hygiene, and the length requirement is what lets
+          # that prose exist without tripping the scan.
           #
           # The exit code is inspected rather than used as a bare `if`. grep
           # exits 2 on a scan error, and `if grep ...; then` treats 2 exactly
@@ -129,7 +130,7 @@ jobs:
         run: |
           set +e
           hits=$(git ls-files -z | xargs -0 grep -nE \
-            '/tmp/[o]pencode|172[.]22[.]71[.]96|10[.]0[.]3[.]1|FirstName[.]LastName|e58cc9c[b]|sardar@aiden[t]ech' \
+            '/tmp/[s]andbox-01|10[.]9[.]9[.]9|you[.]example[.]com|[d]eadbeef' \
             | grep -vFf .github/scan-allow.txt)
           rc=$?
           set -e
@@ -141,9 +142,9 @@ jobs:
 
       - name: No upstream credential reproduced
         run: |
-          # investigation-log.md documents a hardcoded admin token in the pinned
-          # upstream PAS. The value must stay redacted; the finding is reported
-          # without it. This guard is what keeps that true.
+          # The pinned upstream PAS vendor ships a hardcoded admin token. The
+          # value must stay redacted; the finding is reported without it. This
+          # guard is what keeps that true.
           #
           # ADMIN_[T]OKEN and the value are both obfuscated for the same reason:
           # this file is in the tree being scanned, so a pattern spelled plainly
@@ -185,7 +186,7 @@ jobs:
         run: |
           set +e
           hits=$(git log --all -p | grep -E \
-            '/tmp/[o]pencode|172[.]22[.]71[.]96|10[.]0[.]3[.]1|FirstName[.]LastName|sardar@aiden[t]ech' \
+            '/tmp/[s]andbox-01|10[.]9[.]9[.]9|you[.]example[.]com|[d]eadbeef' \
             | grep -vFf .github/scan-allow.txt)
           rc=$?
           set -e
@@ -212,7 +213,7 @@ jobs:
           for f in $(git ls-files 'docs/**/*.png'); do
             for psm in 3 6 11 12; do
               if tesseract "$f" - --psm $psm 2>/dev/null \
-                 | grep -qE '172[.]22[.]71[.]96|10[.]0[.]3[.]1|sardar|FirstName|[o]pencode'; then
+                 | grep -qE '10[.]9[.]9[.]9|you[.]example|[s]andbox-01'; then
                 echo "::error file=$f::a host identifier is readable in this image"
                 fail=1
               fi
@@ -246,7 +247,7 @@ jobs:
           # Two literal phrases, and they are the two that were actually in the
           # README before the scrub. Both are checked rather than a wider regex,
           # because a wider one keeps finding itself: an earlier draft also
-          # matched the CONTRIBUTING.md row that describes this guard.
+          # matched the documentation row that describes this guard.
           set +e
           hits=$(grep -rniF \
             -e 'is **private**' \

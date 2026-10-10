@@ -291,8 +291,8 @@ including InterSystems, can run it and get the same answer.
   provider-side of the same regulation talking to an IRIS FHIR server. Put
   the two together and you have the complete story.
 - **Community-shaped.** MIT-licensed, reproducible (`versions.lock`,
-  checksum-verified), documented for humans *and* AI agents (`AGENTS.md`),
-  with a draft blog matching this README (`blog/`). It is exactly the working,
+  checksum-verified), documented for humans *and* AI agents (`AGENTS.md`).
+  It is exactly the working,
   shareable, verifiable FHIR build the [InterSystems Developer
   Community](https://community.intersystems.com/) likes to feature.
 
@@ -398,8 +398,7 @@ systemd units bring IRIS up, then the six services (`iris.service` →
 **<http://10.0.3.108:3001/>**.
 
 **Target host:** Ubuntu 24.04 LTS, root, ~15 GB free disk, LXC. First boot
-≈ 1–2 min (nothing to provision or build). Full runbook:
-[`LXC-DROPIN.md`](LXC-DROPIN.md).
+≈ 1–2 min (nothing to provision or build). The sections below are the runbook.
 
 ### A1. Host prerequisites (one time)
 
@@ -710,7 +709,7 @@ The full nine-frame pass is in `docs/screenshots/e2e/`. The API path,
 endpoints worth knowing (including CRD's `/metadata` and PAS's
 `/actuator/health` being deliberate 404s), the `PENDING → GRANTED` poll, and
 the `bundle-items.json`-vs-`bundle-prior-auth.json` fixture trap are all
-documented in `TEST-FLOW.md`.
+documented in the accompanying runbook notes.
 
 ---
 
@@ -853,11 +852,9 @@ bin/                      the run version
 versions.lock             every pin, machine-readable. This is the run version.
 fixtures/                 demo hook payloads + the Keycloak realm (26 SMART scopes, dtr/dtr-demo)
 docs/screenshots/         4 curated PNGs + a 9-frame e2e pass
-LXC-DROPIN.md             the image runbook (fresh-Ubuntu path, IP contract, troubleshooting)
 AGENTS.md                 playbook for an AI agent: provision, start, verify, report, stop
-TEST-FLOW.md              the deep runbook — start here if this README is not enough
-PLAN.md / SOURCES.md / investigation-log.md / GIT-PLAN.md / SESSION-NOTES.md
-CONTRIBUTING.md / SECURITY.md / LICENSE
+SOURCES.md                where the pinned upstream versions and facts come from
+SECURITY.md / LICENSE
 ```
 
 The image itself is built by `bin/lxc-image-build.sh` (safe-trim set: never
@@ -922,10 +919,9 @@ assets on GitHub.
 
 **This repo's own docs**
 
-- `LXC-DROPIN.md` — image runbook | `TEST-FLOW.md` — deep runbook |
-  `AGENTS.md` — AI-agent playbook | `PLAN.md` / `investigation-log.md` /
-  `SOURCES.md` — how it was built and what was learned | `CONTRIBUTING.md` /
-  `SECURITY.md` — CI and security posture.
+- `README.md` — this file: install, run, verify | `AGENTS.md` — AI-agent
+  playbook | `SOURCES.md` — where the pinned versions and facts come from |
+  `SECURITY.md` — security posture.
 
 ---
 
