@@ -117,6 +117,23 @@ fi
 # Both Node services serve a PREBUILT bundle in production mode. Build once,
 # then reuse: these are the slow steps and nothing about them changes between
 # demo runs.
+# node_modules is not part of a fresh clone (nor of the LXC image itself:
+# provisioning downloads every input, so a packager trimming the image can drop
+# node_modules and this still works). Install from the lockfile when absent
+# rather than assuming the caller pre-installed — plain `npm ci` fails with
+# "webpack: not found" at the build step and only AFTER the user has waited.
+if [ ! -d "$DTR_DIR/node_modules" ] || [ -z "$(ls -A "$DTR_DIR/node_modules" 2>/dev/null)" ]; then
+  say "installing dtr dependencies (npm ci, one-time)"
+  ( cd "$DTR_DIR" && npm ci --no-audit --no-fund >"$LOGDIR/npmci-dtr.log" 2>&1 ) \
+    || die "dtr npm ci failed, see $LOGDIR/npmci-dtr.log"
+  ok "dtr dependencies installed"
+fi
+if [ ! -d "$CRG_DIR/node_modules" ] || [ -z "$(ls -A "$CRG_DIR/node_modules" 2>/dev/null)" ]; then
+  say "installing crd-request-generator dependencies (npm ci, one-time)"
+  ( cd "$CRG_DIR" && npm ci --no-audit --no-fund >"$LOGDIR/npmci-crg.log" 2>&1 ) \
+    || die "crg npm ci failed, see $LOGDIR/npmci-crg.log"
+  ok "crg dependencies installed"
+fi
 if [ ! -d "$DTR_DIR/public/js" ] || [ -z "$(ls -A "$DTR_DIR/public/js" 2>/dev/null)" ]; then
   say "building dtr frontend (one-time, this is the slow one)"
   # 1280m, not NODE_XMX: the webpack build needs far more headroom than the
@@ -159,6 +176,14 @@ cp -f "$DAVINCI_ROOT/fixtures/keycloak/BurdenReduction-realm.json" \
 # as <lan-ip>:8180, and strict mode would pin the issuer/token URLs to whichever
 # hostname won the race, breaking the other. sslRequired=none in the realm export
 # is what actually allows plain http.
+# KC_HTTP_HOST pins the bind to all interfaces. Observed 2026-10-10: the same
+# kc.sh start-dev command was reachable at 10.0.3.108:8180 from the host under
+# one launch (up.sh via lxc-attach) and bound to 127.0.0.1 only under another
+# (up.sh from davinci-stack.service at cold boot, confirmed via ss). The loopback
+# bind breaks every non-localhost entrypoint: the SMART launch redirects the
+# BROWSER to http://<ADVERTISE_HOST>:8180/... and gets connection-refused, while
+# every server-side probe (localhost:8180) still passes -- a green stack table
+# with a dead login. 0.0.0.0 is also what the other five services bind.
 launch keycloak "$KEYCLOAK_HOME" \
   "http://localhost:$KEYCLOAK_PORT/realms/BurdenReduction/.well-known/openid-configuration" \
   JAVA_HOME="$KC_JAVA_HOME" \
@@ -166,6 +191,7 @@ launch keycloak "$KEYCLOAK_HOME" \
   KC_BOOTSTRAP_ADMIN_PASSWORD="$KEYCLOAK_ADMIN_PASS" \
   KC_HTTP_ENABLED=true \
   KC_HTTP_PORT="$KEYCLOAK_PORT" \
+  KC_HTTP_HOST=0.0.0.0 \
   KC_HOSTNAME_STRICT=false \
   KC_HOSTNAME_STRICT_HTTPS=false \
   -- ./bin/kc.sh start-dev --import-realm

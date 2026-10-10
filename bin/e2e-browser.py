@@ -22,8 +22,8 @@ try:
 except ImportError:
     sys.exit("playwright is not installed. Try: pip install playwright && playwright install chromium")
 
-CRG = "http://localhost:3001"
-PAS = "http://localhost:9015/fhir"
+CRG = f"http://{os.environ.get('ADVERTISE_HOST', 'localhost')}:3001"
+PAS = f"http://{os.environ.get('ADVERTISE_HOST', 'localhost')}:9015/fhir"
 KC_USER = "dtr"
 KC_PASS = "dtr-demo"
 

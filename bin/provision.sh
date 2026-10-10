@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the stack's inputs from versions.lock: 6 upstream clones, the JDK, Maven
-# and Keycloak. Everything else (CDS-Library placement, ports, env) is already in
-# bin/env.sh and bin/up.sh.
+# and Keycloak. CDS-Library placement is also done here (step 1b) — upstream
+# never creates those dirs; ports and env live in bin/env.sh and bin/up.sh.
 #
 #   bin/provision.sh            provision anything missing, verify anything present
 #   bin/provision.sh --check    verify only; never download, non-zero if incomplete
@@ -147,6 +147,38 @@ for nm in "${!REPO_SHA[@]}"; do
 done
 
 # =============================================================================
+step "1b/4  CDS-Library placement (CRD whole, PAS PriorAuth only)"
+# =============================================================================
+# Upstream builds do NOT create these directories; the library has to be copied
+# into each service repo before bootRun, and the layout differs per service:
+#   CRD: bootRun's CWD is CRD/server, and it walks CDS-Library/CRD-DTR from
+#        there, so the WHOLE library goes at  repos/CRD/server/CDS-Library/
+#   PAS: resolves CDS-Library/PriorAuth from its repo root, so ONLY the
+#        PriorAuth subtree goes at  repos/prior-auth/CDS-Library/
+# A missing placement is not detected by anything upstream: CRD boots and dies
+# with "FATAL error: Failed to reload from folder: CDS-Library/CRD-DTR/ does
+# not exist", PAS dies with a NullPointerException in populateRulesTable, and
+# seed-valuesets.sh exits early. Pin-verified clones + this copy = rebuild.
+SRC_LIB="$root/repos/CDS-Library"
+[ -d "$SRC_LIB" ] || { missing "CDS-Library not cloned (step 1 ran before this?)"; }
+CDS_OK="no"
+if [ -d "$root/repos/CRD/server/CDS-Library/CRD-DTR" ] \
+   && [ -d "$root/repos/prior-auth/CDS-Library/PriorAuth" ]; then
+  CDS_OK="yes"
+fi
+if [ "$CDS_OK" = yes ]; then
+  ok "CDS-Library placed (CRD whole @ repos/CRD/server, PAS PriorAuth @ repos/prior-auth)"
+elif [ "$CHECK_ONLY" -eq 1 ]; then
+  missing "CDS-Library not placed in the service repos (run provision.sh to copy)"
+else
+  cp -r "$SRC_LIB" "$root/repos/CRD/server/CDS-Library"
+  mkdir -p "$root/repos/prior-auth/CDS-Library"
+  cp -r "$SRC_LIB/PriorAuth" "$root/repos/prior-auth/CDS-Library/PriorAuth"
+  ok "CDS-Library placed (CRD whole, PAS PriorAuth only)"
+fi
+unset SRC_LIB CDS_OK
+
+# =============================================================================
 step "2/4  JDK ${TOOL[jdk17_version]}+${TOOL[jdk17_build]}  ->  ${TOOL[jdk17_dest]}"
 # =============================================================================
 # Matched on IMPLEMENTOR_VERSION, not just JAVA_VERSION: upstream has both a
@@ -187,6 +219,12 @@ fi
 # =============================================================================
 step "3/4  Maven ${TOOL[maven_version]}  ->  ${TOOL[maven_dest]}"
 # =============================================================================
+# mvn -v needs java, but env.sh (which sets JAVA_HOME) is only sourced later at
+# the Keycloak step, and on a fresh machine runtime/jdk17 only exists after the
+# JDK step above. Point at it right here so both the version check and the
+# installed line see a working java; same values env.sh exports.
+export JAVA_HOME="$root/${TOOL[jdk17_dest]}"
+export PATH="$JAVA_HOME/bin:$PATH"
 mvn_dest="$root/${TOOL[maven_dest]}"
 if [ -x "$mvn_dest/bin/mvn" ]; then
   have="$("$mvn_dest/bin/mvn" -v 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
