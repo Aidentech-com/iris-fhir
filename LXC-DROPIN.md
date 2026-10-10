@@ -54,6 +54,12 @@ sudo systemctl enable --now lxc-net    # creates lxcbr0 = 10.0.3.1 if not alread
 ip -4 addr show lxcbr0                 # expect: inet 10.0.3.1/24
 ```
 
+Two host conditions that look like failures but are not: an *unrelated*
+third-party apt source reporting an HTTP `402` or a missing GPG key makes
+`apt-get update` exit non-zero, but the packages above come from the Ubuntu
+archive and install anyway; and if `lxcbr0` is missing, run
+`sudo systemctl restart lxc-net` before continuing.
+
 Confirm the address the image pins is free and there is room to extract:
 
 ```bash
@@ -131,7 +137,8 @@ lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'
 sudo apt-get install -y python3-venv                             # once
 python3 -m venv .venv                                            # once
 ./.venv/bin/pip install playwright                               # once
-sudo ./.venv/bin/playwright install --with-deps chromium         # once
+./.venv/bin/playwright install --with-deps chromium \
+  || ./.venv/bin/playwright install chromium                     # once
 ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py
 #   → 14 passed, 0 failed
 ```
@@ -140,6 +147,11 @@ ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py
 "externally managed", so a bare `pip install playwright` against the system
 interpreter is refused. The venv lives at `.venv/` and is gitignored. If
 Playwright is missing, the script prints this exact recipe and exits.
+
+`playwright install --with-deps` runs `apt-get update` internally, so an
+unrelated third-party apt source on the host (an HTTP `402`, or a missing GPG
+key) aborts it. That is why the line above falls back to installing the browser
+alone — the system libraries Chromium needs are almost always already present.
 
 Then open **<http://10.0.3.108:3001/>** and click through: coverage card →
 Keycloak login (`dtr` / `dtr-demo`) → questionnaire → **Proceed To Prior Auth**

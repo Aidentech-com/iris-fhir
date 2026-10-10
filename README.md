@@ -409,6 +409,12 @@ sudo apt-get install -y lxc lxc-utils curl python3 git
 sudo systemctl enable --now lxc-net           # creates lxcbr0 = 10.0.3.1
 ```
 
+Two host conditions that look like failures but are not: if `apt-get update`
+reports an *unrelated* third-party repository (an HTTP `402`, or a missing GPG
+key), that is one of your own extra sources — the five packages above come from
+the Ubuntu archive and install regardless. And if `lxcbr0` is missing
+afterwards, run `sudo systemctl restart lxc-net` before continuing.
+
 Then confirm the bridge is up, the address the image pins is free, and there is
 room to extract:
 
@@ -632,10 +638,14 @@ lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'   
 sudo apt-get install -y python3-venv                                            # once
 python3 -m venv .venv                                                           # once
 ./.venv/bin/pip install playwright                                              # once
-sudo ./.venv/bin/playwright install --with-deps chromium                        # once
+#   `--with-deps` shells out to `apt-get update`, so a broken third-party apt
+#   source on your host aborts it. The fallback installs the browser alone; the
+#   system libraries it needs are almost always already present.
+./.venv/bin/playwright install --with-deps chromium \
+  || ./.venv/bin/playwright install chromium                                    # once
 ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py                 # 14/14
 
-# Path B (both on the host, system interpreter is fine if Playwright is already there)
+# Path B (both on the host — needs Playwright reachable from python3)
 ./bin/demo.sh                                                                   # 12/12
 python3 bin/e2e-browser.py                                                      # 14/14
 ```
@@ -779,7 +789,7 @@ The minimum that has to stay green for a release to be a run version:
 
 ```bash
 ./bin/up.sh --reset && ./bin/demo.sh           # 12/12
-python3 bin/e2e-browser.py                     # 14/14
+./.venv/bin/python bin/e2e-browser.py          # 14/14  (Playwright in .venv; see Run and verify)
 ```
 
 ### Security note

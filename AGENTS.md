@@ -164,8 +164,8 @@ Keycloak fail, check that override first.
 Both drivers. Both are required; neither covers the other.
 
 ```bash
-./bin/demo.sh              # 12 assertions, API only    -> 12 passed, 0 failed
-python3 bin/e2e-browser.py # 14 assertions, real browser -> 14 passed, 0 failed
+./bin/demo.sh                       # 12 assertions, API only    -> 12 passed, 0 failed
+./.venv/bin/python bin/e2e-browser.py  # 14 assertions, real browser -> 14 passed, 0 failed
 ```
 
 `demo.sh` covers the API surface. It **cannot** cover the browser leg, and this is the single
@@ -185,7 +185,8 @@ install it into a venv:
 sudo apt-get install -y python3-venv
 python3 -m venv .venv
 ./.venv/bin/pip install playwright
-sudo ./.venv/bin/playwright install --with-deps chromium
+./.venv/bin/playwright install --with-deps chromium \
+  || ./.venv/bin/playwright install chromium     # --with-deps runs apt-get update
 ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py
 ```
 

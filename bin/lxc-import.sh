@@ -128,5 +128,7 @@ echo
 echo "Then open http://10.0.3.108:3001/ and follow the browser walkthrough in"
 echo "README.md. Optional drivers (both required to certify a run):"
 echo "  lxc-attach -n $NAME -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'   # 12/12"
-echo "  ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                        # 14/14"
+echo "  # browser driver, from the host. Playwright must be in a venv; the full"
+echo "  # recipe (PEP-668 on Ubuntu 24.04) is in README 'Run and verify':"
+echo "  ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py             # 14/14"
 echo "Full runbook: LXC-DROPIN.md"

@@ -162,6 +162,7 @@ cat <<'EOF'
   itself from the QuestionnaireResponse. That path is closed now and has its
   own driver:
 
-      python3 bin/e2e-browser.py
+      ADVERTISE_HOST=<host> ./.venv/bin/python bin/e2e-browser.py
+      (Playwright must be in a venv on Ubuntu 24.04 - PEP 668. Recipe in README.)
 EOF
 [ "$fail" = 0 ] || exit 1
