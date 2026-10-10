@@ -303,7 +303,7 @@ If you repackage it:
   `iris force FHIR` → `iris start FHIR`. `^SHUTDOWN`'s prompts read `/dev/tty`
   and cannot be driven from a pipe; the `iris.stop` ExecStop inside the baked-in
   `iris.service` handles that with a pty.
-- **Three things must be in the container before packaging** (all present now):
+- **Four things must be in the container before packaging** (all present now):
   1. `bin/provision.sh --check` green *inside* the container. As of 2026-10-10
      this also means CDS-Library is placed — `provision.sh` step 1b copies CRD's
      *whole* library to `repos/CRD/server/CDS-Library/` and PAS's `PriorAuth/`
@@ -319,6 +319,11 @@ If you repackage it:
   3. The six services built (`node_modules`, dtr/crg frontends) so first boot is
      fast and offline. `bin/up.sh` now runs `npm ci` itself if `node_modules` is
      missing, so a trimmed image still recovers.
+  4. The in-container autostart installed: `bin/lxc-install-autostart.sh` (run
+     *inside* the container) installs `/usr/local/bin/davinci-stack` from
+     `bin/davinci-stack-container.sh` and enables
+     `fixtures/lxc/davinci-stack.service`. Both are in the repo now — the
+     controller/unit had been hand-placed and were unversioned until 2026-10-10.
 - **`bin/up.sh` pins `KC_HTTP_HOST=0.0.0.0` for Keycloak.** Measured 2026-10-10:
   the identical `kc.sh start-dev` command bound `0.0.0.0` when launched by hand
   but `127.0.0.1` when launched by the boot unit, and a loopback bind passes

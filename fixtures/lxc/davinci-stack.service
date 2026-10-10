@@ -1,0 +1,18 @@
+[Unit]
+Description=DaVinci prior-auth stack (six services: keycloak, ehr-shim, crd, prior-auth, dtr, crg)
+# IRIS is this container's other unit; it must be answering before ehr-shim
+# can mint tokens, and up.sh's probes assume a live FHIR engine.
+After=iris.service network.target
+Requires=iris.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=ADVERTISE_HOST=10.0.3.108
+ExecStart=/usr/local/bin/davinci-stack start
+ExecStop=/usr/local/bin/davinci-stack stop
+TimeoutStartSec=2400
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

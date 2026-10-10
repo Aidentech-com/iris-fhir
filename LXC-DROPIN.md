@@ -210,6 +210,12 @@ re-verify after any change):
   `/etc/ssl/certs/java/cacerts`).
 - The six services built (`node_modules`, dtr/crg frontends) so first boot is
   fast and offline.
+- **The in-container autostart installed.** `bin/lxc-install-autostart.sh`
+  (run *inside* the container) installs `/usr/local/bin/davinci-stack` from
+  `bin/davinci-stack-container.sh` and enables `fixtures/lxc/davinci-stack.service`
+  (`After=`/`Requires=iris.service`, `Environment=ADVERTISE_HOST=10.0.3.108`,
+  `ExecStart=/usr/local/bin/davinci-stack start`). Without it the container
+  boots IRIS but never starts the six services.
 
 **Ship only after a cold-boot re-verify**: `lxc-stop` → `lxc-start`, then confirm
 `iris.service` and `davinci-stack.service` both `active`, all six probes `200`
