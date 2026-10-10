@@ -56,7 +56,7 @@ ip -4 addr show lxcbr0              # expect 10.0.3.1/24
 ## Step 1 — drop the image in (5–10 min, mostly download)
 
 ```bash
-git clone https://github.com/Abaabeel/iris-fhir.git
+git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
 sudo bash bin/lxc-import.sh github
 ```
@@ -73,7 +73,7 @@ lxc-ls -f | grep iris-fhir                                                      
 Alternatives to `github` as the source argument: a local directory of parts, a
 single `.tar.gz`, or explicit asset URLs. If the remote is unreachable you can
 download manually: open the release page
-`https://github.com/Abaabeel/iris-fhir/releases/latest`, grab every
+`https://github.com/Aidentech-com/iris-fhir/releases/latest`, grab every
 `iris-fhir-image.tar.gz.partNN` file + `parts.sha256`, put them in one dir and
 `sudo bash bin/lxc-import.sh <that-dir>`.
 

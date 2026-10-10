@@ -53,7 +53,7 @@ value sets, and a claim reaching a payer as structured data.
 ## Run it
 
 ```bash
-git clone https://github.com/Abaabeel/iris-fhir.git
+git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
 sudo bash bin/lxc-import.sh github   # the self-contained image, checksum-verified
 # the container starts IRIS + all six services itself — nothing runs on your host
@@ -63,7 +63,7 @@ ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                          # 
 ```
 
 Full write-up: [The smallest machine that contains the whole future of prior
-authorization](blog-post.md). README: <https://github.com/Abaabeel/iris-fhir>.
+authorization](blog-post.md). README: <https://github.com/Aidentech-com/iris-fhir>.
 
 The FHIR future is not coming. It runs on one machine, and you can watch it
 grant a claim in half an hour.

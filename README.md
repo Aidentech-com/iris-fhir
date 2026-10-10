@@ -407,7 +407,7 @@ sudo apt-get update && sudo apt-get install -y lxc lxc-utils curl pigz git
 sudo systemctl enable --now lxc-net          # creates lxcbr0 on 10.0.3.1
 
 # 2. get the repo + the image in one command
-git clone https://github.com/Abaabeel/iris-fhir.git
+git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
 sudo bash bin/lxc-import.sh github           # downloads + verifies + extracts + starts
 ```
@@ -417,7 +417,7 @@ parts (`partNN` + `parts.sha256`, ~4.2 GB total in 3 parts for `dropin-v2`),
 assemble, **verify the whole-archive SHA-256**, extract to
 `/var/lib/lxc/iris-fhir`, start the container, and wait for TLS 200 on the
 FHIR endpoint. The release is
-[`dropin-v2`](https://github.com/Abaabeel/iris-fhir/releases/tag/dropin-v2).
+[`dropin-v2`](https://github.com/Aidentech-com/iris-fhir/releases/tag/dropin-v2).
 The container then brings the stack up on its own — see
 [Run and verify](#run-and-verify).
 

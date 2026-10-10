@@ -47,7 +47,7 @@ Everything the stack authenticates against, in full. There is nothing else.
 | Keycloak demo user | `dtr` / `dtr-demo` | `fixtures/keycloak/BurdenReduction-realm.json` | none — `e2e-browser.py` types it |
 | Keycloak client secret | `#replaceMe#` | same fixture; a literal upstream placeholder | none |
 | PAS FHIR client | none | PAS runs `BYPASS_AUTH=true`, issues its own token from H2 | none |
-| GitHub | none | origin = `Abaabeel/davinci-mock` (unchanged, unpushed). Active repo: **`Abaabeel/iris-fhir`** (public) — remote `iris-fhir`, created + pushed 2026-09-30 as the project's home under the LXC machine's name; flipped public 2026-09-30 (later) to serve the distributable LXC image release to end users (`bin/lxc-import.sh github`). Image parts live as release assets on this repo | none |
+| GitHub | none | origin = `Aidentech-com/davinci-mock` (unchanged, unpushed). Active repo: **`Aidentech-com/iris-fhir`** (public) — remote `iris-fhir`, created + pushed 2026-09-30 as the project's home under the LXC machine's name; flipped public 2026-09-30 (later) to serve the distributable LXC image release to end users (`bin/lxc-import.sh github`). Image parts live as release assets on this repo | none |
 | `VSAC_API_KEY` | absent | optional; without it 67 value sets do not resolve | none — omit it |
 | IRIS FHIR OAuth confidential client | auto-generated id/secret in `bin/env.sh` (`IRIS_OAUTH_CLIENT_ID`/`_SECRET`) | created by `ConfigureInternalOAuthClients()` when the `iris-fhir` container was provisioned; local mock fixture, same standing as Keycloak's `admin/admin` — it only authorizes against the container's internal OAuth server | none — needed by `bin/ehr-shim` and `bin/seed-iris.sh` |
 
@@ -276,7 +276,7 @@ State these if asked; do not try to fix them.
 ## LXC drop-in image (maintenance notes)
 
 The `iris-fhir` LXC container ships as a distributable image (release assets on
-`Abaabeel/iris-fhir`; `bin/lxc-import.sh github` on the end-user host). It is
+`Aidentech-com/iris-fhir`; `bin/lxc-import.sh github` on the end-user host). It is
 **self-contained**: the six-service stack, its toolchains and the built
 frontends all live inside the container at `/opt/davinci-mock`, Keycloak at
 `/opt/keycloak`. The end user runs `lxc-start`; the host runs nothing. Full

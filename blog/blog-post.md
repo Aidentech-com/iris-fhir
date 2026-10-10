@@ -127,7 +127,7 @@ frontends — released publicly with whole-archive SHA-256 verification. An end
 user runs one command:
 
 ```bash
-git clone https://github.com/Abaabeel/iris-fhir.git
+git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
 sudo bash bin/lxc-import.sh github
 ```
@@ -216,7 +216,7 @@ healthcare:
 ## Run it
 
 ```bash
-git clone https://github.com/Abaabeel/iris-fhir.git
+git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
 sudo bash bin/lxc-import.sh github                      # self-contained image, verified
 # the container starts IRIS + the six services itself — nothing runs on your host
@@ -225,7 +225,7 @@ ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                            
 # open http://10.0.3.108:3001/ and click through to a GRANTED claim
 ```
 
-Or just read the [full README](https://github.com/Abaabeel/iris-fhir) — it
+Or just read the [full README](https://github.com/Aidentech-com/iris-fhir) — it
 carries the why, the what, the install, the walkthrough, and the traps.
 
 The FHIR future is not coming. It is here, it runs on one machine, and its

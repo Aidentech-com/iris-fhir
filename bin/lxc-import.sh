@@ -14,7 +14,7 @@ set -euo pipefail
 NAME=iris-fhir
 DEST=/var/lib/lxc/$NAME
 ARCHIVE_NAME="$NAME-image.tar.gz"
-RELEASE_URL="https://github.com/Abaabeel/iris-fhir/releases/latest"
+RELEASE_URL="https://github.com/Aidentech-com/iris-fhir/releases/latest"
 STAGE="${TMPDIR:-/var/tmp}/lxc-import.$$"
 mkdir -p "$STAGE"
 trap 'rm -rf "$STAGE"' EXIT
