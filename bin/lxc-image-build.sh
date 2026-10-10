@@ -4,7 +4,7 @@
 #
 #   Usage: ./bin/lxc-image-build.sh [container-name] [out-dir]
 #     container-name default: iris-fhir
-#     out-dir default: /root/lxc-dist
+#     out-dir default: ~/lxc-dist
 #     PARTSIZE env overrides the split size (default 1800M; GitHub caps release
 #     assets at 2G per file)
 #
@@ -17,7 +17,7 @@
 set -euo pipefail
 
 NAME="${1:-iris-fhir}"
-OUTDIR="${2:-/root/lxc-dist}"
+OUTDIR="${2:-${HOME:-/root}/lxc-dist}"
 PARTSIZE="${PARTSIZE:-1800M}"
 SRC="/var/lib/lxc/$NAME"
 R="$SRC/rootfs"
