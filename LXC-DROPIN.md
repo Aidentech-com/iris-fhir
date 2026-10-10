@@ -15,7 +15,7 @@ services (`bin/up.sh` + `bin/seed-iris.sh`). You open
 login → questionnaire → **Proceed To Prior Auth** → claim goes `Pending` then
 `Granted`.
 
-Target: **Ubuntu 24.04, root, ~12 GB free disk, LXC**. First boot ≈ 1–2 min; no
+Target: **Ubuntu 24.04, root, ~15 GB free disk, LXC**. First boot ≈ 1–2 min; no
 provisioning step, no build step.
 
 ---
@@ -48,9 +48,17 @@ produced it, so the run stays reproducible and reviewable in git.
 ## Step 0 — one-time host prep (2 min)
 
 ```bash
-sudo apt update && sudo apt install -y lxc curl python3
-sudo systemctl restart lxc-net      # creates lxcbr0 (10.0.3.1) if not up
-ip -4 addr show lxcbr0              # expect 10.0.3.1/24
+sudo apt-get update
+sudo apt-get install -y lxc lxc-utils curl python3 git
+sudo systemctl enable --now lxc-net    # creates lxcbr0 = 10.0.3.1 if not already up
+ip -4 addr show lxcbr0                 # expect: inet 10.0.3.1/24
+```
+
+Confirm the address the image pins is free and there is room to extract:
+
+```bash
+ip -4 addr show | grep -qw 10.0.3.108 && echo "10.0.3.108 TAKEN" || echo "10.0.3.108 is free"
+df -h /var/lib | tail -1               # want >= 15 GB available
 ```
 
 ## Step 1 — drop the image in (5–10 min, mostly download)
@@ -120,12 +128,18 @@ lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'
 #   → 12 assertions, 0 failures
 
 # from the host — real browser (needs the repo's bin/e2e-browser.py + Playwright)
-ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py
+sudo apt-get install -y python3-venv                             # once
+python3 -m venv .venv                                            # once
+./.venv/bin/pip install playwright                               # once
+sudo ./.venv/bin/playwright install --with-deps chromium         # once
+ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py
 #   → 14 passed, 0 failed
 ```
 
-`e2e-browser.py` needs Playwright once:
-`pip install playwright && playwright install chromium --with-deps`
+`e2e-browser.py` needs Playwright in a **venv**: Ubuntu 24.04 is PEP-668
+"externally managed", so a bare `pip install playwright` against the system
+interpreter is refused. The venv lives at `.venv/` and is gitignored. If
+Playwright is missing, the script prints this exact recipe and exits.
 
 Then open **<http://10.0.3.108:3001/>** and click through: coverage card →
 Keycloak login (`dtr` / `dtr-demo`) → questionnaire → **Proceed To Prior Auth**
@@ -160,7 +174,8 @@ Keycloak login (`dtr` / `dtr-demo`) → questionnaire → **Proceed To Prior Aut
   It is split with `split -b 1800M` for the GitHub release asset limit
   (≤1.9 GB each). The `dropin-v2` build (2026-10-10) produced a **4.2 GB**
   compressed archive in **3 parts** (`part00` 1.8 GB, `part01` 1.8 GB,
-  `part02` 629 MB) plus `parts.sha256`; `bin/lxc-image-build.sh` prints the
+  `part02` 629 MB) plus `iris-fhir-image.tar.gz.sha256` (whole-archive, 89 B)
+  and `parts.sha256` (per-part, 288 B); `bin/lxc-image-build.sh` prints the
   sizes for any rebuild.
 - IRIS **auto-starts** at container boot via a baked-in `iris.service` systemd
   unit (`iris start FHIR`); its ExecStop shuts IRIS down inside a pty (the

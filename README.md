@@ -397,27 +397,56 @@ systemd units bring IRIS up, then the six services (`iris.service` →
 `davinci-stack.service`). The browser entry point is
 **<http://10.0.3.108:3001/>**.
 
-**Target host:** Ubuntu 24.04 LTS, root, ~12 GB free disk, LXC. First boot
+**Target host:** Ubuntu 24.04 LTS, root, ~15 GB free disk, LXC. First boot
 ≈ 1–2 min (nothing to provision or build). Full runbook:
 [`LXC-DROPIN.md`](LXC-DROPIN.md).
 
-```bash
-# 1. host prerequisites
-sudo apt-get update && sudo apt-get install -y lxc lxc-utils curl pigz git
-sudo systemctl enable --now lxc-net          # creates lxcbr0 on 10.0.3.1
+### A1. Host prerequisites (one time)
 
-# 2. get the repo + the image in one command
-git clone https://github.com/Aidentech-com/iris-fhir.git
-cd iris-fhir
-sudo bash bin/lxc-import.sh github           # downloads + verifies + extracts + starts
+```bash
+sudo apt-get update
+sudo apt-get install -y lxc lxc-utils curl python3 git
+sudo systemctl enable --now lxc-net           # creates lxcbr0 = 10.0.3.1
 ```
 
-`bin/lxc-import.sh github` does the whole drop-in: download the release
-parts (`partNN` + `parts.sha256`, ~4.2 GB total in 3 parts for `dropin-v2`),
-assemble, **verify the whole-archive SHA-256**, extract to
-`/var/lib/lxc/iris-fhir`, start the container, and wait for TLS 200 on the
-FHIR endpoint. The release is
-[`dropin-v2`](https://github.com/Aidentech-com/iris-fhir/releases/tag/dropin-v2).
+Then confirm the bridge is up, the address the image pins is free, and there is
+room to extract:
+
+```bash
+ip -4 addr show lxcbr0                                    # expect: inet 10.0.3.1/24
+ip -4 addr show | grep -qw 10.0.3.108 && echo "10.0.3.108 TAKEN" || echo "10.0.3.108 is free"
+df -h /var/lib | tail -1                                  # want >= 15 GB available
+```
+
+### A2. Get the repo and drop the image in (one command)
+
+```bash
+git clone https://github.com/Aidentech-com/iris-fhir.git
+cd iris-fhir
+sudo bash bin/lxc-import.sh github
+```
+
+That fetches the release metadata from the GitHub API, downloads the three
+parts (~4.2 GB), **verifies the whole-archive SHA-256**, extracts to
+`/var/lib/lxc/iris-fhir`, starts the container, and waits for IRIS to answer.
+Expect 5–15 min, dominated by the download. A successful run ends like this:
+
+```
+assembled: 4.2G
+iris-fhir-image.tar.gz: OK
+archive checksum OK
+extracting to /var/lib/lxc/iris-fhir ...
+starting container...
+=== FHIR metadata: 200 ===
+```
+
+The release is
+[`dropin-v2`](https://github.com/Aidentech-com/iris-fhir/releases/tag/dropin-v2)
+(`iris-fhir-image.tar.gz.part00`, `.part01`, `.part02`, plus
+`iris-fhir-image.tar.gz.sha256` and `parts.sha256`). **If the GitHub API is
+unreachable** (offline, or the anonymous rate limit), download all five assets
+into one directory by hand and run `sudo bash bin/lxc-import.sh <that-directory>`.
+
 The container then brings the stack up on its own — see
 [Run and verify](#run-and-verify).
 
@@ -594,19 +623,26 @@ it runs *inside* the container (the repo travels at `/opt/davinci-mock`);
 `e2e-browser.py` drives a real browser from the host and must be told the host:
 
 ```bash
-# Path A
+# Path A — API driver: run INSIDE the container (demo.sh talks to localhost)
 lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'   # 12/12
-pip install playwright && playwright install chromium --with-deps               # once
-ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                            # 14/14
 
-# Path B (both on the host)
+# Path A — browser driver: run from the HOST, pointed at 10.0.3.108.
+#   Playwright goes in a venv: Ubuntu 24.04 is PEP-668 "externally managed",
+#   so a bare `pip install playwright` is refused by the system interpreter.
+sudo apt-get install -y python3-venv                                            # once
+python3 -m venv .venv                                                           # once
+./.venv/bin/pip install playwright                                              # once
+sudo ./.venv/bin/playwright install --with-deps chromium                        # once
+ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py                 # 14/14
+
+# Path B (both on the host, system interpreter is fine if Playwright is already there)
 ./bin/demo.sh                                                                   # 12/12
 python3 bin/e2e-browser.py                                                      # 14/14
 ```
 
 `demo.sh` needs only `python3` + `curl`. `e2e-browser.py` is the only thing
-needing Playwright; if it is missing the script says so and exits instead of
-failing obscurely. Then open **`http://10.0.3.108:3001/`** (Path A) or
+needing Playwright; if it is missing the script prints the exact venv recipe
+above and exits instead of failing obscurely. Then open **`http://10.0.3.108:3001/`** (Path A) or
 **`http://localhost:3001/`** (Path B) and follow
 [the browser walkthrough](#walkthrough-the-browser-path).
 

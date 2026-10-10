@@ -20,7 +20,15 @@ from urllib.parse import urlparse
 try:
     from playwright.sync_api import sync_playwright, expect
 except ImportError:
-    sys.exit("playwright is not installed. Try: pip install playwright && playwright install chromium")
+    sys.exit(
+        "playwright is not installed. On Ubuntu 24.04 a bare `pip install playwright` is\n"
+        "refused (PEP 668, externally managed). Use a venv:\n"
+        "  sudo apt-get install -y python3-venv\n"
+        "  python3 -m venv .venv\n"
+        "  ./.venv/bin/pip install playwright\n"
+        "  sudo ./.venv/bin/playwright install --with-deps chromium\n"
+        "then run: ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py"
+    )
 
 CRG = f"http://{os.environ.get('ADVERTISE_HOST', 'localhost')}:3001"
 PAS = f"http://{os.environ.get('ADVERTISE_HOST', 'localhost')}:9015/fhir"

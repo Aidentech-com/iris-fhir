@@ -177,10 +177,16 @@ references PAS at all, so grepping those two repositories for the PAS port retur
 the browser leg looks impossible. It is not. `demo.sh` posts its own Claim and therefore can
 never cover it; the two drivers submit *different* claims and neither is redundant.
 
-`e2e-browser.py` needs Playwright, which the stack itself does not:
+`e2e-browser.py` needs Playwright, which the stack itself does not. Ubuntu 24.04
+is PEP-668 "externally managed", so a bare `pip install playwright` is refused —
+install it into a venv:
 
 ```bash
-pip install playwright && playwright install chromium --with-deps
+sudo apt-get install -y python3-venv
+python3 -m venv .venv
+./.venv/bin/pip install playwright
+sudo ./.venv/bin/playwright install --with-deps chromium
+ADVERTISE_HOST=10.0.3.108 ./.venv/bin/python bin/e2e-browser.py
 ```
 
 If that install is unavailable, report the API result (12/12) and state plainly that the

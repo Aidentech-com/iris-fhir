@@ -33,5 +33,10 @@ dist/
 __pycache__/
 *.pyc
 
+# The Playwright virtualenv that README / LXC-DROPIN tell you to create for
+# bin/e2e-browser.py (Ubuntu 24.04 is PEP-668 "externally managed", so Playwright
+# cannot be pip-installed into the system interpreter).
+.venv/
+
 # CI harness (executed by bin/ci-local.sh)
 .ci-local/
