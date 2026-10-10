@@ -121,9 +121,10 @@ it, seeded it, and proved it** — not with a brochure, but with receipts:
 ## The part that changes the story: the drop-in image
 
 Anyone can *describe* a working FHIR stack. We made it **downloadable**: a
-prebuilt LXC image of the fully provisioned IRIS for Health instance, released
-publicly with whole-archive SHA-256 verification. An end user runs one
-command:
+prebuilt, **self-contained** LXC image — a fully provisioned IRIS for Health
+instance *plus* the six DaVinci services, their toolchains and the built
+frontends — released publicly with whole-archive SHA-256 verification. An end
+user runs one command:
 
 ```bash
 git clone https://github.com/Abaabeel/iris-fhir.git
@@ -131,11 +132,13 @@ cd iris-fhir
 sudo bash bin/lxc-import.sh github
 ```
 
-Then the stack scripts (`provision.sh`, `up.sh`, `demo.sh`,
-`e2e-browser.py`) bring up the six services, and half an hour later a
-first-time user is watching a prior-auth claim get granted in the browser —
-with IRIS doing the FHIR work underneath. No InterSystems account, no license
-request, no install wizard, no cloud signup.
+That is the whole install. The container starts IRIS and then the six services
+itself (`iris.service` → `davinci-stack.service`) — **nothing runs on the
+host**. Open **<http://10.0.3.108:3001/>** and half an hour after you start the
+download (most of it the 4 GB image) a first-time user is watching a prior-auth
+claim get granted in the browser, with IRIS doing the FHIR work underneath. No
+InterSystems account, no license request, no install wizard, no cloud signup,
+no `provision.sh`.
 
 ## To the people at InterSystems — this one is yours to enjoy
 
@@ -215,12 +218,11 @@ healthcare:
 ```bash
 git clone https://github.com/Abaabeel/iris-fhir.git
 cd iris-fhir
-sudo bash bin/lxc-import.sh github     # the IRIS image, verified
-./bin/provision.sh --check             # all inputs present
-./bin/up.sh                            # six services, post-flight checks
-./bin/demo.sh                          # 12/12 API assertions
-python3 bin/e2e-browser.py             # 14/14 real-browser assertions
-# open http://localhost:3001/ and click through to a GRANTED claim
+sudo bash bin/lxc-import.sh github                      # self-contained image, verified
+# the container starts IRIS + the six services itself — nothing runs on your host
+lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'   # 12/12 API
+ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                            # 14/14 browser
+# open http://10.0.3.108:3001/ and click through to a GRANTED claim
 ```
 
 Or just read the [full README](https://github.com/Abaabeel/iris-fhir) — it

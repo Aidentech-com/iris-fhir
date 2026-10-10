@@ -9,6 +9,13 @@ several of them contain superseded reasoning that will mislead you.
 
 A locally-runnable mock of the HL7 DaVinci prior-authorization flow: **CRD → DTR → PAS**.
 Six upstream DaVinci services run as ordinary background processes. No container runtime.
+(Run this way, the stack runs on *your* host, per steps 1–6 below.)
+
+If you were handed the **LXC drop-in image** instead of a bare checkout, the whole stack —
+IRIS, the six services, their toolchains and the built frontends — already runs *inside* the
+container at `/opt/davinci-mock`, started by the container's own systemd units. There is no
+provisioning step, nothing runs on your host, `lxc-start` is the whole flow, and the entry
+point is **<http://10.0.3.108:3001/>**. See `LXC-DROPIN.md` for that path.
 
 Success looks like this, and only this: a human opens <http://localhost:3001/>, clicks through
 a coverage card, logs in at a Keycloak login page, fills a questionnaire, presses
@@ -269,8 +276,23 @@ State these if asked; do not try to fix them.
 ## LXC drop-in image (maintenance notes)
 
 The `iris-fhir` LXC container ships as a distributable image (release assets on
-`Abaabeel/iris-fhir`; `bin/lxc-import.sh github` on the end-user host). If you
-repackage it:
+`Abaabeel/iris-fhir`; `bin/lxc-import.sh github` on the end-user host). It is
+**self-contained**: the six-service stack, its toolchains and the built
+frontends all live inside the container at `/opt/davinci-mock`, Keycloak at
+`/opt/keycloak`. The end user runs `lxc-start`; the host runs nothing. Full
+end-user walkthrough: `LXC-DROPIN.md`.
+
+Boot sequence inside the container (no host systemd involvement):
+
+- `iris.service` (enabled) starts IRIS (`iris start FHIR`).
+- `davinci-stack.service` (enabled, `After=iris.service`) runs
+  `/usr/local/bin/davinci-stack start` → waits for IRIS TLS 200 → `bin/up.sh` →
+  `bin/seed-iris.sh`. Log: `/var/log/davinci-stack.log`.
+- Browser entry point is **<http://10.0.3.108:3001/>** — the container's static
+  bridge IP. LXC 5.0.3 has no proxy device, so the image pins `10.0.3.108` via
+  `/etc/netplan/10-lxc.yaml` and every service binds `0.0.0.0`.
+
+If you repackage it:
 
 - `bin/lxc-image-build.sh` trims cruft but the trim must **never** delete
   `IRIS.WIJ`, the journal files, or `journal.log` (IRIS's journal-HISTORY log).
@@ -281,10 +303,33 @@ repackage it:
   `iris force FHIR` → `iris start FHIR`. `^SHUTDOWN`'s prompts read `/dev/tty`
   and cannot be driven from a pipe; the `iris.stop` ExecStop inside the baked-in
   `iris.service` handles that with a pty.
-- The image is only shippable after a **clean** `systemctl stop iris` (the unit
-  stop is validated: IRIS down, unit `inactive`) and a cold-boot re-verify:
-  TLS 200 on `https://10.0.3.108:52774/fhir/r4/metadata`, shim 200, pat013,
-  CRD `systemActions` non-empty, `grep -c "Startup aborted" messages.log` = 0.
+- **Three things must be in the container before packaging** (all present now):
+  1. `bin/provision.sh --check` green *inside* the container. As of 2026-10-10
+     this also means CDS-Library is placed — `provision.sh` step 1b copies CRD's
+     *whole* library to `repos/CRD/server/CDS-Library/` and PAS's `PriorAuth/`
+     to `repos/prior-auth/CDS-Library/`. It was previously done by hand and
+     never scripted, so a fresh clone boot-failed (CRD "Failed to reload from
+     folder: CDS-Library/CRD-DTR/", PAS NPE in `populateRulesTable`).
+  2. The JDK 21 `/etc` dependencies for Keycloak: `/etc/java-21-openjdk/` and
+     `/etc/ssl/certs/java/cacerts`. Debian's JDK package symlinks its config and
+     truststore there; `provision.sh` installs Keycloak but not these, and
+     without them `kc.sh` dies loading `java.security` (first) or with "could
+     not find the system truststore" (second) — both hit 2026-10-10, both fixed
+     by copying the two `/etc` trees in.
+  3. The six services built (`node_modules`, dtr/crg frontends) so first boot is
+     fast and offline. `bin/up.sh` now runs `npm ci` itself if `node_modules` is
+     missing, so a trimmed image still recovers.
+- **`bin/up.sh` pins `KC_HTTP_HOST=0.0.0.0` for Keycloak.** Measured 2026-10-10:
+  the identical `kc.sh start-dev` command bound `0.0.0.0` when launched by hand
+  but `127.0.0.1` when launched by the boot unit, and a loopback bind passes
+  every `localhost:8180` probe while breaking the browser's redirect to
+  `ADVERTISE_HOST:8180` (the SMART launch sends the browser to Keycloak). If
+  `8180` ever reads `000` from the host but `200` inside, check that pin.
+- The image is only shippable after a **clean** cold-boot re-verify —
+  `lxc-stop` → `lxc-start` and nothing else: both units `active`, all six probes
+  `200` from the host via `10.0.3.108`, `grep -c "Startup aborted" messages.log`
+  = 0, and both drivers green (`demo.sh` 12/12 in-container; `e2e-browser.py`
+  14/14 from the host with `ADVERTISE_HOST=10.0.3.108`).
 - `iris list` shows `state: warn` — expected (HealthShare failover context has
   no mirror partner; benign). IRIS auto-starts at container boot via the unit.
 

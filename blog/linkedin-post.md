@@ -13,8 +13,8 @@ Why this matters:
 Run it yourself:
 
 git clone https://github.com/Abaabeel/iris-fhir.git && cd iris-fhir
-sudo bash bin/lxc-import.sh github
-./bin/provision.sh --check && ./bin/up.sh
-./bin/demo.sh && python3 bin/e2e-browser.py
+sudo bash bin/lxc-import.sh github      # self-contained image; the container starts everything
+lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'
+ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py     # open http://10.0.3.108:3001/
 
 Full write-up with the why, the receipts, and the walkthrough: https://github.com/Abaabeel/iris-fhir

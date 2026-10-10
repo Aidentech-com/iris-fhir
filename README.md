@@ -3,14 +3,14 @@
 **A drop-in laboratory: the real HL7 DaVinci prior-authorization workflow
 (CRD → DTR → PAS), end to end, on your own machine, driven to a real
 `Pending → Granted` decision against a real InterSystems IRIS for Health FHIR
-server — no cloud, no PHI, no InterSystems account, no container runtime for
-the stack itself.**
+server — no cloud, no PHI, no InterSystems account. The whole stack runs
+inside one LXC container, so your host needs nothing but LXC itself.**
 
-You download one prebuilt LXC image (a provisioned IRIS for Health instance),
-import it with one command, start six services with one script, and watch a
-real browser walk through: coverage card → real OIDC login → payer
-questionnaire → a `Claim` that a SMART app builds for itself → a prior-auth
-decision.
+You download one prebuilt, self-contained LXC image (IRIS for Health *and* the
+six DaVinci services, with their toolchains and built frontends), import it
+with one command, and the container starts everything. Then watch a real
+browser walk through: coverage card → real OIDC login → payer questionnaire →
+a `Claim` that a SMART app builds for itself → a prior-auth decision.
 
 **Powered by [InterSystems IRIS for Health](https://www.intersystems.com/products/intersystems-iris-for-health/)
 Community Edition.** We don't hand-roll a FHIR engine — we run the real
@@ -41,8 +41,9 @@ product and prove it end to end. See [The InterSystems angle](#the-intersystems-
 - [Glossary](#glossary)
 - [Further reading](#further-reading)
 
-**Last verified:** 2026-09-30. Green run: `demo.sh` 12/12, `e2e-browser.py`
-14/14, image cold-boot verified from the public release. Pins in
+**Last verified:** 2026-10-10. Green run: `demo.sh` 12/12 (in-container),
+`e2e-browser.py` 14/14 (from the host), and the container cold-boot verified
+(`lxc-stop` → `lxc-start`, all six services up via the enabled units). Pins in
 `versions.lock` are the run version.
 
 ---
@@ -312,23 +313,28 @@ made or implied.
 ## How it works
 
 ```
-   ┌──────────────  your machine  ──────────────┐   ┌──── LXC container (the image) ────┐
-   │                                            │   │                                 │
-   │  browser ──► crg :3001  ──►  CRD :8090     │   │   IRIS for Health (instance FHIR)│
-   │   mock EHR UI         CDS Hooks:           │   │    · FHIR R4 repository          │
-   │   (patient picker)    order-sign-crd        │   │    · https://10.0.3.108:52774   │
-   │        │                    │              │   │    · OAuth client + TLS + seed   │
-   │        │  SMART launch      │ card:        │   │    · auto-start systemd unit     │
-   │        ▼                    │ "Documentation│  │                                 │
-   │   Keycloak :8180            │  Required"    │   └─────────────────────────────────┘
-   │   (real OIDC login)         ▼              │            ▲
-   │        │              dtr :3005            │            │  /fhir/r4/*
-   │        ▼              SMART app:           │      ehr-shim :8080  (mints bearer)
-   │   questionnaire ──►  fill → builds Claim ──┼────────────┘
-   │        │                 │                 │
-   │        │                 ▼ Submit          │
-   │        └────────►  PAS :9015  Claim/$submit 201 → PENDING → (15 s) → GRANTED
-   └────────────────────────────────────────────┘
+   ┌─────────────  your machine  ─────────────┐
+   │   browser                                 │
+   └───────────────┬───────────────────────────┘
+                   │   http://10.0.3.108:3001
+                   ▼
+   ┌───────────  LXC container "iris-fhir" — self-contained  ─────────────┐
+   │                                                                       │
+   │   crg :3001  ──────────────────────►  CRD :8090                       │
+   │   mock EHR UI                          CDS Hooks: order-sign-crd      │
+   │      │                                      │  card: "Documentation   │
+   │      │  SMART launch                        │         Required"       │
+   │      ▼                                      ▼                         │
+   │   Keycloak :8180                       dtr :3005                      │
+   │   (real OIDC login)                    SMART app: fill → builds Claim │
+   │      │                                      │                         │
+   │      ▼                                      ▼ Submit                  │
+   │   questionnaire                        PAS :9015  Claim/$submit 201   │
+   │                                        → PENDING → GRANTED (15 s)     │
+   │                                                                       │
+   │   ehr-shim :8080  (mints bearer) ──►  IRIS for Health (instance FHIR) │
+   │                        https://10.0.3.108:52774/fhir/r4               │
+   └───────────────────────────────────────────────────────────────────────┘
 ```
 
 The flow, in plain terms:
@@ -361,16 +367,18 @@ Both are required; neither is redundant.
 | Component | Port | Stack | Role |
 |---|---|---|---|
 | **IRIS for Health** (in the LXC image) | 52774 (TLS FHIR), 52773, 1972 | InterSystems IRIS for Health Community 2026.2 | the clinical data platform + FHIR R4 repository. R4 base: `https://10.0.3.108:52774/fhir/r4`. Auto-starts at container boot |
-| **ehr-shim** | 8080 | Node | host-side proxy that holds the IRIS OAuth confidential client, mints a `client_credentials` bearer per call, and fronts `https://10.0.3.108:52774` — so the browser never needs an IRIS token |
+| **ehr-shim** | 8080 | Node | proxies to IRIS: holds the IRIS OAuth confidential client, mints a `client_credentials` bearer per call, and fronts `https://10.0.3.108:52774` — so the browser never needs an IRIS token |
 | **CRD** | 8090 | Java/Quarkus, Gradle | CDS Hooks server + coverage rules; the `order-sign-crd` hook returns the "Documentation Required" card. Not a FHIR server |
 | **prior-auth (PAS)** | 9015 | Java/Spring Boot 2.7, Gradle | `POST /fhir/Claim/$submit` → 201; CQL rules decide `Pending → Granted` on a 15 s timer |
 | **Keycloak** | 8180 | Keycloak 26.7.4 | realm `BurdenReduction`, public client `app-login`, user `dtr` / `dtr-demo`. Exists so the DTR launch is a real OIDC redirect |
 | **dtr** | 3005 | Node 22 / React 19 / Express 5 | the SMART app: login, questionnaire, **and builds + submits the Claim** |
 | **crd-request-generator (crg)** | 3001 | Node 22 / React | the mock EHR UI you drive the demo from |
 
-Deliberately independent process groups (plus the container): a crash in one
-does not kill-loop the others, and each service has its own log
-(`logs/<svc>.log`) and readiness probe.
+In the drop-in image all seven run **inside** the container (IRIS via
+`iris.service`, the six services via `davinci-stack.service`). They are
+deliberately independent process groups: a crash in one does not kill-loop the
+others, and each service has its own log (`logs/<svc>.log`) and readiness probe.
+In Path B you start them yourself with `bin/up.sh`.
 
 > **Port 3000 is not used.** An unrelated Next.js app owns it on some hosts
 > and `bin/down.sh` is written to leave it alone. crg runs on **3001**.
@@ -379,14 +387,19 @@ does not kill-loop the others, and each service has its own log
 
 ## Install — Path A: the drop-in image (recommended)
 
-The image contains the **IRIS half** — the part no script can rebuild for
-you: a provisioned IRIS for Health instance with OAuth client, TLS, seed
-data, auto-start. The **stack half** (Keycloak, CRD, dtr, crg, prior-auth,
-ehr-shim) runs on your host from this repo. No container runtime for the
-stack; the container is just where IRIS lives.
+The image is **self-contained**. It holds the **IRIS half** — a provisioned
+IRIS for Health instance with OAuth client, TLS, seed data, auto-start — *and*
+the **stack half** (Keycloak, CRD, dtr, crg, prior-auth, ehr-shim) with its
+toolchains (JDK 17, Maven, a JDK 21 for Keycloak) and the built frontends, all
+inside the container at `/opt/davinci-mock`. **The host runs nothing but
+`lxc-start`** — no Node, no JDK, no `provision.sh`. The container's own
+systemd units bring IRIS up, then the six services (`iris.service` →
+`davinci-stack.service`). The browser entry point is
+**<http://10.0.3.108:3001/>**.
 
-**Target host:** Ubuntu 24.04 LTS, root, ~12 GB free disk, LXC. ≈ 25 minutes
-total. Full runbook: [`LXC-DROPIN.md`](LXC-DROPIN.md).
+**Target host:** Ubuntu 24.04 LTS, root, ~12 GB free disk, LXC. First boot
+≈ 1–2 min (nothing to provision or build). Full runbook:
+[`LXC-DROPIN.md`](LXC-DROPIN.md).
 
 ```bash
 # 1. host prerequisites
@@ -400,30 +413,37 @@ sudo bash bin/lxc-import.sh github           # downloads + verifies + extracts +
 ```
 
 `bin/lxc-import.sh github` does the whole drop-in: download the release
-parts (`part00` + `part01`, ~2.5 GB) and both checksum files, assemble,
-**verify the whole-archive SHA-256**, extract to `/var/lib/lxc/iris-fhir`,
-start the container, and wait for TLS 200 on the FHIR endpoint. The release
-is [`dropin-v1`](https://github.com/Abaabeel/iris-fhir/releases/tag/dropin-v1).
+parts (`partNN` + `parts.sha256`, ~4.2 GB total in 3 parts for `dropin-v2`),
+assemble, **verify the whole-archive SHA-256**, extract to
+`/var/lib/lxc/iris-fhir`, start the container, and wait for TLS 200 on the
+FHIR endpoint. The release is
+[`dropin-v2`](https://github.com/Abaabeel/iris-fhir/releases/tag/dropin-v2).
+The container then brings the stack up on its own — see
+[Run and verify](#run-and-verify).
 
 **What the image contract guarantees:**
 
 | Thing | Value | Note |
 |---|---|---|
 | Container IP | `10.0.3.108` (static, inside the image) | your host must own `.108` on default `lxcbr0` |
+| Browser entry point | `http://10.0.3.108:3001/` | crg; all six services bind `0.0.0.0` inside the container |
 | IRIS FHIR base | `https://10.0.3.108:52774/fhir/r4` | self-signed TLS — `curl -k`; ehr-shim trusts it by design |
+| The six services | keycloak 8180 · ehr-shim 8080 · crd 8090 · prior-auth 9015 · dtr 3005 · crg 3001 | all inside the container, started by `davinci-stack.service` |
 | IRIS startup | automatic | baked-in `iris.service` systemd unit; clean shutdown writes a clean WIJ |
+| Stack startup | automatic | `davinci-stack.service` (`After=iris.service`) runs `up.sh` + `seed-iris.sh`; log at `/var/log/davinci-stack.log` |
 | `iris list` shows `state: warn` | expected | unconfigured HealthShare failover context; benign — serving unaffected |
 | Credentials | none needed | the OAuth client lives inside the image; `bin/env.sh` knows it |
 
-**Verify the container before bringing up the stack:**
+**Verify the container came up:**
 
 ```bash
 lxc-ls -f | grep iris-fhir                 # RUNNING
 curl -sk https://10.0.3.108:52774/fhir/r4/metadata -o /dev/null -w '%{http_code}\n'   # 200
 ```
 
-Then continue at [Run and verify](#run-and-verify). (The stack scripts need
-the container up: ehr-shim answers `:8080` and proxies to it.)
+Then wait for the stack and continue at [Run and verify](#run-and-verify).
+There is no `up.sh` to run on the host — the container starts the six services
+itself.
 
 ---
 
@@ -519,8 +539,24 @@ is readable at the concatenated path CRD actually builds (see
 
 ## Run and verify
 
+**Path A (drop-in):** the container starts the six services itself. Wait for
+the unit, then probe:
+
 ```bash
-./bin/up.sh                      # start all six (container must be up in Path A)
+for i in $(seq 1 60); do
+  lxc-attach -n iris-fhir -- systemctl is-active davinci-stack.service 2>/dev/null \
+    | grep -q active && break
+  sleep 5
+done
+```
+
+`/var/log/davinci-stack.log` (inside the container) ends with
+`=== start OK: all six services green ===`.
+
+**Path B (from source):** start them yourself:
+
+```bash
+./bin/up.sh                      # start all six
 ./bin/up.sh --reset              # same, but wipe PAS H2 + DTR lowdb state first
 ```
 
@@ -533,8 +569,9 @@ the value-set cache readable at CRD's concatenated path, and the CRD
 **Do not trust the summary — probe independently:**
 
 ```bash
+HOST=10.0.3.108      # Path A (from the host).  Path B: HOST=localhost
 while read -r name port route; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://localhost:$port$route" || echo 000)
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "http://$HOST:$port$route" || echo 000)
   printf '  %-12s %s  %s  %s\n' "$name" "$port" "$code" "$route"
 done <<'EOF'
 keycloak     8180 /realms/BurdenReduction/.well-known/openid-configuration
@@ -552,17 +589,25 @@ means you guessed the path, not that the service is down. `:3001` matters
 most: crg serves its runtime URLs from `/env-config`, so if that is missing
 the browser calls the wrong hosts even though `/` works.
 
-Then verify with **both** drivers:
+Then verify with **both** drivers. `demo.sh` talks to `localhost`, so in Path A
+it runs *inside* the container (the repo travels at `/opt/davinci-mock`);
+`e2e-browser.py` drives a real browser from the host and must be told the host:
 
 ```bash
-./bin/demo.sh                                 # 12 assertions, API only    -> 12/12
-pip install playwright && playwright install chromium --with-deps   # once
-python3 bin/e2e-browser.py                    # 14 assertions, real browser -> 14/14
+# Path A
+lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'   # 12/12
+pip install playwright && playwright install chromium --with-deps               # once
+ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                            # 14/14
+
+# Path B (both on the host)
+./bin/demo.sh                                                                   # 12/12
+python3 bin/e2e-browser.py                                                      # 14/14
 ```
 
 `demo.sh` needs only `python3` + `curl`. `e2e-browser.py` is the only thing
 needing Playwright; if it is missing the script says so and exits instead of
-failing obscurely. Then open **<http://localhost:3001/>** and follow
+failing obscurely. Then open **`http://10.0.3.108:3001/`** (Path A) or
+**`http://localhost:3001/`** (Path B) and follow
 [the browser walkthrough](#walkthrough-the-browser-path).
 
 ### Seed the IRIS side (Path A)
@@ -580,7 +625,8 @@ container or want to re-seed:
 
 The exact sequence `e2e-browser.py` drives — do it yourself:
 
-1. Open **<http://localhost:3001/>**, click **`PATIENT SELECT`**; pick the
+1. Open **`http://localhost:3001/`** (Path B) or
+   **`http://10.0.3.108:3001/`** (Path A), click **`PATIENT SELECT`**; pick the
    **pat013 tile** (Vlad Quinton, 69, male), use *its own*
    `Select a request...` dropdown → **`E0607 (DeviceRequest) Home blood
    glucose monitor`**, then **`Click to select this patient`**.

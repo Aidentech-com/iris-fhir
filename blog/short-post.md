@@ -55,12 +55,11 @@ value sets, and a claim reaching a payer as structured data.
 ```bash
 git clone https://github.com/Abaabeel/iris-fhir.git
 cd iris-fhir
-sudo bash bin/lxc-import.sh github   # the IRIS image, checksum-verified
-./bin/provision.sh --check
-./bin/up.sh
-./bin/demo.sh                        # 12/12
-python3 bin/e2e-browser.py           # 14/14, real browser
-# open http://localhost:3001/ and click through to a GRANTED claim
+sudo bash bin/lxc-import.sh github   # the self-contained image, checksum-verified
+# the container starts IRIS + all six services itself — nothing runs on your host
+lxc-attach -n iris-fhir -- bash -c 'cd /opt/davinci-mock && bash bin/demo.sh'  # 12/12
+ADVERTISE_HOST=10.0.3.108 python3 bin/e2e-browser.py                          # 14/14, real browser
+# open http://10.0.3.108:3001/ and click through to a GRANTED claim
 ```
 
 Full write-up: [The smallest machine that contains the whole future of prior
