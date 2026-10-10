@@ -14,7 +14,9 @@ set -euo pipefail
 NAME=iris-fhir
 DEST=/var/lib/lxc/$NAME
 ARCHIVE_NAME="$NAME-image.tar.gz"
-RELEASE_URL="https://github.com/Aidentech-com/iris-fhir/releases/latest"
+# GitHub's /releases/latest is an HTML page (it redirects to /releases/tag/<t>);
+# json.load on it fails. Use the REST API, which returns the asset list as JSON.
+RELEASE_API="https://api.github.com/repos/Aidentech-com/iris-fhir/releases/latest"
 STAGE="${TMPDIR:-/var/tmp}/lxc-import.$$"
 mkdir -p "$STAGE"
 trap 'rm -rf "$STAGE"' EXIT
@@ -37,11 +39,12 @@ SRC="${1:-github}"
 ARCHIVE="$STAGE/$ARCHIVE_NAME"
 case "$SRC" in
   github)
-    echo "fetching release metadata from $RELEASE_URL ..."
-    api="$(curl -sfL "$RELEASE_URL" || die "cannot reach $RELEASE_URL (release not published?)")"
-    assets="$(printf '%s' "$api" | python3 -c \
-      'import json,sys; d=json.load(sys.stdin); print(" ".join(a["browser_download_url"] for a in d.get("assets",[])))')"
-    [ -n "$assets" ] || die "no assets found in the release"
+    echo "fetching release metadata from $RELEASE_API ..."
+    api="$(curl -sfL -H 'Accept: application/vnd.github+json' "$RELEASE_API")" \
+      || die "cannot reach the GitHub API at $RELEASE_API (offline, or the release is missing)"
+    assets="$(printf '%s' "$api" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(a["browser_download_url"] for a in d.get("assets",[])))' 2>/dev/null)" \
+      || die "could not parse release metadata (GitHub API rate limit? open $RELEASE_API in a browser)"
+    [ -n "$assets" ] || die "no downloadable assets found in the release"
     echo "downloading parts (each up to ~2 GB; extract from the release page if slow)..."
     for url in $assets; do
       [ -n "$url" ] || continue
