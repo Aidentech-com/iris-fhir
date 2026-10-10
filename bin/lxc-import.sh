@@ -41,7 +41,7 @@ case "$SRC" in
   github)
     echo "fetching release metadata from $RELEASE_API ..."
     api="$(curl -sfL -H 'Accept: application/vnd.github+json' "$RELEASE_API")" \
-      || die "cannot reach the GitHub API at $RELEASE_API (offline, or the release is missing)"
+      || die "cannot reach the GitHub API at $RELEASE_API (offline, release missing, or anonymous rate limit)"
     assets="$(printf '%s' "$api" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(" ".join(a["browser_download_url"] for a in d.get("assets",[])))' 2>/dev/null)" \
       || die "could not parse release metadata (GitHub API rate limit? open $RELEASE_API in a browser)"
     [ -n "$assets" ] || die "no downloadable assets found in the release"
