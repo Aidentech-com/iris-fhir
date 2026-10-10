@@ -405,52 +405,84 @@ systemd units bring IRIS up, then the six services (`iris.service` →
 ```bash
 sudo apt-get update
 sudo apt-get install -y lxc lxc-utils curl python3 git
-sudo systemctl enable --now lxc-net           # creates lxcbr0 = 10.0.3.1
 ```
 
-Two host conditions that look like failures but are not: if `apt-get update`
-reports an *unrelated* third-party repository (an HTTP `402`, or a missing GPG
-key), that is one of your own extra sources — the five packages above come from
-the Ubuntu archive and install regardless. And if `lxcbr0` is missing
-afterwards, run `sudo systemctl restart lxc-net` before continuing.
+That's the whole host install — **nothing starts `lxc-net` here, and the
+installer never starts or restarts it either.** The drop-in attaches a veth to
+a *bridge*; the check is bridge state, not service state. Two cases:
 
-Then confirm the bridge is up, the address the image pins is free, and there is
-room to extract:
+- **Default (blessed):** your host has the LXC default bridge `lxcbr0` on
+  `10.0.3.1/24` (the `lxc` package's `lxc-net` creates it). If it is missing,
+  create it yourself — the installer will not:
 
-```bash
-ip -4 addr show lxcbr0                                    # expect: inet 10.0.3.1/24
-ip -4 addr show | grep -qw 10.0.3.108 && echo "10.0.3.108 TAKEN" || echo "10.0.3.108 is free"
-df -h /var/lib | tail -1                                  # want >= 15 GB available
-```
+  ```bash
+  sudo systemctl enable --now lxc-net      # one time, creates lxcbr0 = 10.0.3.1
+  ```
+
+- **Any other bridge:** you already run LXC with guests on your own bridge
+  (for example `br0` on `192.168.50.1/24` — you do not need `lxc-net` at all).
+  Nothing to do by hand: the installer detects that `lxcbr0/10.0.3.1` is
+  absent, lists the bridges it *did* find, and lets you pick one and the
+  container IP — or pass them directly (`--bridge br0 --container-ip
+  192.168.50.108`, see A2). The image is re-pinned to your network before the
+  first start.
+
+The installer checks the rest itself — root, LXC tools, ≥ 15 GB free under
+`/var/lib`, and that the container address is not already taken (host
+addresses, dnsmasq leases, live probe) — **before** it downloads anything.
 
 ### A2. Get the repo and drop the image in (one command)
 
 ```bash
 git clone https://github.com/Aidentech-com/iris-fhir.git
 cd iris-fhir
-sudo bash bin/lxc-import.sh github
+sudo bash bin/lxc-import.sh               # default: single file from Cloudflare R2
 ```
 
-That fetches the release metadata from the GitHub API, downloads the three
-parts (~4.2 GB), **verifies the whole-archive SHA-256**, extracts to
-`/var/lib/lxc/iris-fhir`, starts the container, and waits for IRIS to answer.
-Expect 5–15 min, dominated by the download. A successful run ends like this:
+That downloads the **one** ~4.2 GB image file (`iris-fhir-image.tar.gz` from
+the R2 mirror), **verifies the whole-archive SHA-256**, extracts to
+`/var/lib/lxc/iris-fhir`, starts the container, and waits for IRIS and the
+six-service stack to answer. Expect 5–15 min, dominated by the download.
+
+**Every step announces itself** — a one-line brief, then
+`Press Enter to accept, or x to exit` — so you always know what is about to
+happen and can abort the whole process at any gate (nothing is changed until
+you accept). Add `--yes` to run unattended. A successful run ends like this:
 
 ```
-assembled: 4.2G
-iris-fhir-image.tar.gz: OK
-archive checksum OK
-extracting to /var/lib/lxc/iris-fhir ...
-starting container...
-=== FHIR metadata: 200 ===
+==> [9/10] Verify the stack   ...
+  keycloak     8180  200  /realms/BurdenReduction/.well-known/openid-configuration
+  ehr-shim     8080  200  /fhir/r4/metadata
+  crd          8090  200  /r4/cds-services
+  prior-auth   9015  200  /fhir/metadata
+  dtr          3005  200  /
+  crg          3001  200  /
+==> [10/10] Summary ...
+Open http://10.0.3.108:3001/ ...
 ```
 
-The release is
-[`dropin-v2`](https://github.com/Aidentech-com/iris-fhir/releases/tag/dropin-v2)
-(`iris-fhir-image.tar.gz.part00`, `.part01`, `.part02`, plus
-`iris-fhir-image.tar.gz.sha256` and `parts.sha256`). **If the GitHub API is
-unreachable** (offline, or the anonymous rate limit), download all five assets
-into one directory by hand and run `sudo bash bin/lxc-import.sh <that-directory>`.
+The full transcript is written to `$HOME/lxc-import-iris-fhir.log`.
+
+**Alternate sources** (same installer, same verification):
+
+- `sudo bash bin/lxc-import.sh github` — the GitHub
+  [`dropin-v2`](https://github.com/Aidentech-com/iris-fhir/releases/tag/dropin-v2)
+  release (three parts + sidecars; the general fallback when R2 is blocked).
+- `sudo bash bin/lxc-import.sh ./downloads` — a directory holding the parts
+  (or the single file), for downloading by hand.
+
+**Custom bridge / IP** (host without `lxcbr0`, e.g. `br0` on a 192-series):
+
+```bash
+sudo bash bin/lxc-import.sh --bridge br0 --container-ip 192.168.50.108
+```
+
+The installer rewrites the container config (`lxc.net.0.link`), the in-image
+netplan, and every stack endpoint that keys on the baked-in `10.0.3.108`
+(`env.sh` FHIR base, ehr-shim, `davinci-stack*`, the Keycloak realm redirect
+URIs) before the first start — runtime state (logs, databases) is never
+touched. Everything below then uses **your** address
+(`http://192.168.50.108:3001/`).
 
 The container then brings the stack up on its own — see
 [Run and verify](#run-and-verify).
@@ -459,16 +491,17 @@ The container then brings the stack up on its own — see
 
 | Thing | Value | Note |
 |---|---|---|
-| Container IP | `10.0.3.108` (static, inside the image) | your host must own `.108` on default `lxcbr0` |
-| Browser entry point | `http://10.0.3.108:3001/` | crg; all six services bind `0.0.0.0` inside the container |
-| IRIS FHIR base | `https://10.0.3.108:52774/fhir/r4` | self-signed TLS — `curl -k`; ehr-shim trusts it by design |
+| Container IP | `10.0.3.108` (static, image default) | re-pinned to your choice on a custom bridge (`--container-ip`) |
+| Browser entry point | `http://<container-ip>:3001/` | default `http://10.0.3.108:3001/`; all six services bind `0.0.0.0` inside the container |
+| IRIS FHIR base | `https://<container-ip>:52774/fhir/r4` | self-signed TLS — `curl -k`; ehr-shim trusts it by design |
 | The six services | keycloak 8180 · ehr-shim 8080 · crd 8090 · prior-auth 9015 · dtr 3005 · crg 3001 | all inside the container, started by `davinci-stack.service` |
 | IRIS startup | automatic | baked-in `iris.service` systemd unit; clean shutdown writes a clean WIJ |
 | Stack startup | automatic | `davinci-stack.service` (`After=iris.service`) runs `up.sh` + `seed-iris.sh`; log at `/var/log/davinci-stack.log` |
 | `iris list` shows `state: warn` | expected | unconfigured HealthShare failover context; benign — serving unaffected |
 | Credentials | none needed | the OAuth client lives inside the image; `bin/env.sh` knows it |
 
-**Verify the container came up:**
+**Verify the container came up** (the installer does this for you; manual
+form):
 
 ```bash
 lxc-ls -f | grep iris-fhir                 # RUNNING
