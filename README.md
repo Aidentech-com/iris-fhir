@@ -486,7 +486,10 @@ the baked-in `10.0.3.108` (`env.sh` FHIR base, ehr-shim, `davinci-stack*`,
 the Keycloak realm redirect URIs, the CRD warmup fixture) before the first
 start. It also drops the shipped Keycloak database — `kc.sh --import-realm`
 only imports when the realm is absent, so the realm must re-import from the
-re-pinned fixture to carry **your** redirect URIs. Runtime state (logs, IRIS
+re-pinned fixture to carry **your** redirect URIs, and points the
+TLS-verifying in-container IRIS clients (ehr-shim, the seeder) at `127.0.0.1`
+instead of the new IP — the shipped IRIS TLS certificate only covers
+`127.0.0.1` and the baked `10.0.3.108`. Runtime state (logs, IRIS
 data) is never touched. Everything below then uses **your** address
 (`http://192.168.50.108:3001/`).
 

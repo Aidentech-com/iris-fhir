@@ -320,9 +320,18 @@ repin_file() { # $1 path
   sed -i "s/10\.0\.3\.108/$CONTAINER_IP/g" "$1"
   ok "  ${1#"$DEST"/}"
 }
+# The shipped IRIS TLS cert only covers 127.0.0.1 + 10.0.3.108, so on a custom
+# network the TLS-verifying in-container IRIS clients (ehr-shim inherits
+# env.sh's IRIS_FHIR_BASE, seed-iris mints its own) must dial 127.0.0.1, not
+# the container's new IP, or certificate verification rejects the connection.
+repin_file_loopback() { # $1 path
+  if [ ! -f "$1" ]; then warn "  $1 missing — skipped"; return 0; fi
+  sed -i "s/10\.0\.3\.108/127.0.0.1/g" "$1"
+  ok "  ${1#"$DEST"/} (IRIS endpoints -> 127.0.0.1)"
+}
 if [ "$REPIN" = 1 ]; then
   begin_step "Re-pin network (custom bridge/IP)" \
-    "The image bakes in $DEFAULT_BRIDGE / $DEFAULT_IP. Rewriting the container config, netplan, the installed systemd unit, and the stack's endpoint references so everything keys on $CONTAINER_IP on $BRIDGE. Runtime state (logs, IRIS data) is left untouched; the shipped Keycloak DB is dropped so the realm re-imports with your redirect URIs."
+    "The image bakes in $DEFAULT_BRIDGE / $DEFAULT_IP. Rewriting the container config, netplan, the installed systemd unit, and the stack's endpoint references so everything keys on $CONTAINER_IP on $BRIDGE. Runtime state (logs, IRIS data) is left untouched; the shipped Keycloak DB is dropped so the realm re-imports with your redirect URIs, and the TLS-verifying IRIS clients are pointed at loopback because the shipped IRIS certificate only covers 127.0.0.1 and the baked 10.0.3.108."
   handle="$DEST/rootfs"
   sed -i "s/^lxc\.net\.0\.link = .*/lxc.net.0.link = $BRIDGE/" "$DEST/config"
   ok "  config: lxc.net.0.link -> $BRIDGE"
@@ -345,9 +354,9 @@ network:
   version: 2
 EOF
   ok "  netplan -> $CONTAINER_IP$PREFIX via $GATEWAY"
-  repin_file "$handle/opt/davinci-mock/bin/env.sh"
-  repin_file "$handle/opt/davinci-mock/bin/seed-iris.sh"
-  repin_file "$handle/opt/davinci-mock/bin/ehr-shim/server.js"
+  repin_file_loopback "$handle/opt/davinci-mock/bin/env.sh"
+  repin_file_loopback "$handle/opt/davinci-mock/bin/seed-iris.sh"
+  repin_file_loopback "$handle/opt/davinci-mock/bin/ehr-shim/server.js"
   repin_file "$handle/opt/davinci-mock/bin/up.sh"
   repin_file "$handle/opt/davinci-mock/bin/davinci-stack.sh"
   repin_file "$handle/opt/davinci-mock/bin/davinci-stack-container.sh"
