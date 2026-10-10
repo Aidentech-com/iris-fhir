@@ -69,9 +69,14 @@ rm -f "$ARCHIVE" "$ARCHIVE.part"* "$ARCHIVE.sha256" "$OUTDIR/parts.sha256"
 tar -C /var/lib/lxc --numeric-owner --use-compress-program='pigz -9' -cf "$ARCHIVE" "$NAME"
 
 cd "$OUTDIR"
-sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
-split -b "$PARTSIZE" -d -a 2 "$ARCHIVE" "$ARCHIVE.part"
-sha256sum "$ARCHIVE.part"* > "$OUTDIR/parts.sha256"
+ARCHIVE_NAME="$(basename "$ARCHIVE")"
+# Checksum sidecars must hold BARE filenames: the end user runs
+# `sha256sum -c` from a staging dir holding the assembled archive, so an
+# absolute build-host path here makes every import die with
+# "checksum mismatch on the downloaded image".
+sha256sum "$ARCHIVE_NAME" > "$ARCHIVE_NAME.sha256"
+split -b "$PARTSIZE" -d -a 2 "$ARCHIVE_NAME" "$ARCHIVE_NAME.part"
+sha256sum "$ARCHIVE_NAME".part* > parts.sha256
 rm -f "$ARCHIVE.part.size_placeholder" 2>/dev/null || true
 
 echo
