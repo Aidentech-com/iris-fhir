@@ -397,8 +397,11 @@ systemd units bring IRIS up, then the six services (`iris.service` →
 `davinci-stack.service`). The browser entry point is
 **<http://10.0.3.108:3001/>**.
 
-**Target host:** Ubuntu 24.04 LTS, root, ~15 GB free disk, LXC. First boot
-≈ 1–2 min (nothing to provision or build). The sections below are the runbook.
+**Target host:** Ubuntu 24.04 LTS, root, ~15 GB free disk, LXC, and a CPU with
+the **AVX, AVX2, BMI1 and BMI2** instructions — IRIS 2024.x requires them, the
+installer checks in step 1, and a CPU without them makes `iris.service` crash
+with a `SIGILL` core dump at boot (see A1). First boot ≈ 1–2 min (nothing to
+provision or build). The sections below are the runbook.
 
 ### A1. Host prerequisites (one time)
 
@@ -410,6 +413,22 @@ sudo apt-get install -y lxc lxc-utils curl python3 git
 That's the whole host install — **nothing starts `lxc-net` here, and the
 installer never starts or restarts it either.** The drop-in attaches a veth to
 a *bridge*; the check is bridge state, not service state. Two cases:
+
+**Confirm the CPU can run IRIS** — all four of these must print:
+
+```bash
+grep -oE '\b(avx|avx2|bmi1|bmi2)\b' /proc/cpuinfo | sort -u
+```
+
+IRIS for Health 2024.x is compiled against **AVX, AVX2, BMI1 and BMI2**. On a
+CPU without them, `iris.service` dies with a `SIGILL` core dump the moment IRIS
+starts (measured on a Core 2 Quad Q9650 — flags were only `cx16 sse2 ssse3`,
+and the container never came up). This is a hardware requirement, not a
+software bug: no installer or config change can fix it, and a container cannot
+emulate instructions the host CPU lacks. Run the image on a 2013+ Intel
+(Haswell) or 2017+ AMD (Zen) CPU, or on a VM configured with a modern CPU
+model. `bin/lxc-import.sh` checks this for you in step 1 and aborts with a
+clear message on a CPU that cannot run it.
 
 - **Default (blessed):** your host has the LXC default bridge `lxcbr0` on
   `10.0.3.1/24` (the `lxc` package's `lxc-net` creates it). If it is missing,
@@ -428,8 +447,9 @@ a *bridge*; the check is bridge state, not service state. Two cases:
   first start.
 
 The installer checks the rest itself — root, LXC tools, ≥ 15 GB free under
-`/var/lib`, and that the container address is not already taken (host
-addresses, dnsmasq leases, live probe) — **before** it downloads anything.
+`/var/lib`, the **CPU instructions above**, and that the container address is
+not already taken (host addresses, dnsmasq leases, live probe) — **before** it
+downloads anything.
 
 ### A2. Get the repo and drop the image in (one command)
 

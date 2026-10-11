@@ -320,6 +320,14 @@ Boot sequence inside the container (no host systemd involvement):
 - Browser entry point is **<http://10.0.3.108:3001/>** — the container's static
   bridge IP. LXC 5.0.3 has no proxy device, so the image pins `10.0.3.108` via
   `/etc/netplan/10-lxc.yaml` and every service binds `0.0.0.0`.
+- **The host CPU must have AVX, AVX2, BMI1 and BMI2.** IRIS 2024.x is compiled
+  against them; on a CPU without them `iris.service` dies with a `SIGILL` core
+  dump at boot and nothing comes up (measured on a Core 2 Quad Q9650 — flags
+  only `cx16 sse2 ssse3`). `bin/lxc-import.sh` step 1 gates on this and aborts
+  before the download; it is a hardware requirement — a container cannot
+  emulate instructions the host CPU lacks, so re-importing on the same box
+  cannot help. First symptom to suspect this for: `systemctl status iris.service`
+  → `code=dumped, status=4/ILL`.
 
 If you repackage it:
 

@@ -142,14 +142,27 @@ printf '\033[1;34m=== lxc image import: %s ===\033[0m\n' "$NAME"
 
 # ---------------------------------------------------------------- [1/10]
 begin_step "Host prerequisites" \
-  "Checks: running as root, LXC tools installed, curl, and >= 15 GB free under /var/lib for the extraction."
+  "Checks: running as root, LXC tools installed, curl, >= 15 GB free under /var/lib for the extraction, and the CPU instructions IRIS needs (AVX, AVX2, BMI1, BMI2)."
 [ "$(id -u)" = 0 ] || die "run as root (sudo bash $0)"
 command -v lxc-start >/dev/null || die "lxc-utils not installed (apt install lxc lxc-utils)"
 command -v lxc-info  >/dev/null || die "lxc-utils not installed (apt install lxc lxc-utils)"
 command -v curl      >/dev/null || die "curl not installed"
 avail="$(df -Pk /var/lib 2>/dev/null | awk 'NR==2{print $4}' || true)"
 [ "${avail:-0}" -ge 15728640 ] || die "need >= 15 GB free under /var/lib (have $(( avail / 1024 / 1024 )) GB)"
-ok "root, lxc tools, curl, disk"
+# IRIS 2024.x is compiled against AVX/AVX2/BMI1/BMI2. On a CPU without them
+# `iris start FHIR` dies with SIGILL (measured: Core 2 Quad Q9650, flags only
+# cx16/sse2/ssse3). Containers share the host CPU — nothing in the image can
+# work around this. Gate here so a doomed import aborts before the download.
+need_flags="avx avx2 bmi1 bmi2"
+have_flags="$(grep -oiE '\b(avx|avx2|bmi1|bmi2)\b' /proc/cpuinfo 2>/dev/null | sort -u | tr '[:upper:]' '[:lower:]' | tr '\n' ' ')"
+missing_flags=""
+for f in $need_flags; do
+  case " $have_flags " in *" $f "*) ;; *) missing_flags="$missing_flags $f";; esac
+done
+if [ -n "$missing_flags" ]; then
+  die "this CPU cannot run IRIS: missing instruction(s):$missing_flags (all of $need_flags required; found:${have_flags:- none}). IRIS 2024.x crashes with SIGILL at startup without them. Import on a 2013+ Intel (Haswell) or 2017+ AMD (Zen) CPU, or a VM with a modern CPU model."
+fi
+ok "root, lxc tools, curl, disk, cpu (avx avx2 bmi1 bmi2)"
 
 # ---------------------------------------------------------------- [2/10]
 begin_step "Network — bridge and container IP" \
